@@ -45,6 +45,7 @@ export class Renderer{
   this.heroLight=new Image();this.heroLight.src=new URL('../assets/generated/ash-bell-pilgrim-light-v1.png',import.meta.url).href;
   this.heroHeavy=new Image();this.heroHeavy.src=new URL('../assets/generated/ash-bell-pilgrim-heavy-v2.png',import.meta.url).href;
   this.heroPotion=new Image();this.heroPotion.src=new URL('../assets/generated/ash-bell-pilgrim-potion-v1.png',import.meta.url).href;
+  this.heroRoll=new Image();this.heroRoll.src=new URL('../assets/generated/ash-bell-pilgrim-roll-v1.png',import.meta.url).href;
   this.terrain=document.createElement('canvas');this.terrain.width=COLS*TILE;this.terrain.height=ROWS*TILE;
   this.drawTerrain();this.tiles.onload=()=>this.drawTerrain();
  }
@@ -161,24 +162,24 @@ export class Renderer{
   for(let i=0;i<14;i++){const yy=(t*18+i*8)%110;rect(c,x+Math.sin(i*1.8+yy*.03)*25,y-18-yy,1+(i%2),2,i%2?'#d6bb75':'#ffdc9b');}
  }
  heroSprite(c,p,t){
-  const action=p.action?.kind,face=p.action?.face??p.face,sector=(Math.round(face/(Math.PI/4))+8)%8;
+  const action=p.action?.kind,face=action==='roll'?p.action.dir:p.action?.face??p.face,sector=(Math.round(face/(Math.PI/4))+8)%8;
   const cardinalRow=()=>{
    if(sector===2)return 0;
    if(sector===6)return 1;
    return [3,4,5].includes(sector)?3:2;
   };
-  if(['light','heavy','heal'].includes(action)){
-   const image=action==='light'?this.heroLight:action==='heavy'?this.heroHeavy:this.heroPotion;
+  if(['light','heavy','heal','roll'].includes(action)){
+   const image=action==='light'?this.heroLight:action==='heavy'?this.heroHeavy:action==='roll'?this.heroRoll:this.heroPotion;
    if(!image.complete||!image.naturalWidth)return false;
-   const time=p.action.time,frame=action==='light'?Number(time>=.13):action==='heavy'?Number(time>=.37):Number(time>=.78);
+   const time=p.action.time,frame=action==='light'?Number(time>=.13):action==='heavy'?Number(time>=.37):action==='roll'?Number(time>=.19):Number(time>=.78);
    const sw=image.naturalWidth/2,sh=image.naturalHeight/4,sx=frame*sw,sy=cardinalRow()*sh;
-   const style=action==='heavy'?{x:-40,y:-60,w:80,h:60,offset:frame?-2:-4}:action==='light'?{x:-50,y:-59,w:100,h:64,offset:frame?5:-3}:{x:-40,y:-58,w:80,h:60,offset:frame?8:-12};
+   const style=action==='heavy'?{x:-40,y:-60,w:80,h:60,offset:frame?-2:-4}:action==='light'?{x:-50,y:-59,w:100,h:64,offset:frame?5:-3}:action==='roll'?{x:-40,y:-51,w:80,h:60,offset:frame?5:-5}:{x:-40,y:-58,w:80,h:60,offset:frame?8:-12};
    c.save();c.translate(Math.round(p.x),Math.round(p.y));ellipse(c,0,2,15,5,'#061217aa');c.translate(style.offset,0);
    c.drawImage(image,sx,sy,sw,sh,style.x,style.y,style.w,style.h);c.restore();return true;
   }
   if(action||![this.heroIdle,this.heroRunContact,this.heroRunPassing,this.heroBackpedal].every(image=>image.complete&&image.naturalWidth))return false;
   const moving=p.moving;
-  let image=this.heroIdle,sx=0,sy=0,sw,sh,flip=false,xOffset=0,drawY=-55,drawH=60,bob=0;
+  let image=this.heroIdle,sx=0,sy=0,sw,sh,flip=false,xOffset=0,drawY=-55,drawH=60,bob=0,clipHeight=0;
   const useRow=(sheet,row)=>{
    const unit=sheet.naturalHeight/4;
    // Les planches récentes ont une grille régulière. Seul l’ancrage varie
@@ -206,7 +207,11 @@ export class Renderer{
    }else{
     const frame=Math.floor(p.walk/(Math.PI/1.8))%4,col=frame>1?1:0;
     image=frame%2?this.heroRunPassing:this.heroRunContact;sw=image.naturalWidth/2;sx=col*sw;
-    useRow(image,moveRow());xOffset=col?7:-5;bob=[0,-2.5,-4,-2.5][frame];if(flip)xOffset=-xOffset;
+    const row=moveRow();useRow(image,row);
+    // La pose de passage droite déborde légèrement sur la rangée inférieure
+    // de sa planche : on coupe uniquement les 4 px de rendu concernés.
+    if(image===this.heroRunPassing&&row===2)clipHeight=56;
+    xOffset=col?7:-5;bob=[0,-2.5,-4,-2.5][frame];if(flip)xOffset=-xOffset;
    }
   }else{
    const frame=Math.floor(t/.62)&1;
@@ -217,6 +222,7 @@ export class Renderer{
   if(p.hitReact>0){const kick=p.hitReact/Math.max(.01,p.hitReactMax);c.translate(-Math.cos(p.kickAngle)*kick*3,-Math.sin(p.kickAngle)*kick*2);c.scale(1+kick*.1,1-kick*.06);}
   c.translate(xOffset,8+bob);
   if(flip)c.scale(-1,1);
+  if(clipHeight){c.beginPath();c.rect(-40,drawY,80,clipHeight);c.clip();}
   c.drawImage(image,sx,sy,sw,sh,-40,drawY,80,drawH);
   c.restore();return true;
  }
