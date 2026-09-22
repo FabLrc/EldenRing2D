@@ -33,9 +33,9 @@ function shrine(){
  $('leave-shrine').onclick=resume;for(const kind of ['vigor','healing'])$('upgrade-'+kind).onclick=()=>{if(upgrade(s,kind)){sound('handleCoins');save();shrine();}};bell();
 }
 function death(){setModal(`<div class="eyebrow">LE SERMENT PERDURE</div><h2 class="death-title">Vous êtes tombé.</h2><p style="text-align:center">${s.drop?s.drop.amount+' fragments attendent là où vous êtes tombé. Une nouvelle mort les remplacera.':'La flamme vous appelle à nouveau.'}</p><button class="primary" id="respawn">Se relever au refuge</button>`,'dead');$('respawn').onclick=()=>{respawn(s);renderer.camera={x:s.player.x,y:s.player.y};resume();save();};}
-function victory(){save();bell();const veilOn=s.progress.cycle<3,romains=['','I','II','III'];
- setModal(`<div class="eyebrow">LE SERMENT EST ROMPU</div><h2>Enfin, le silence.</h2><p>Le gardien s’effondre. Pour la première fois depuis des siècles, la cloche se tait. Une lumière pâle traverse les pierres.</p><div class="stat-line"><span>Chutes du pèlerin</span><span>${s.progress.deaths}</span></div><div class="stat-line"><span>Raccourci</span><span>${s.progress.shortcut?'Ouvert':'Non découvert'}</span></div><div class="stat-line"><span>Talisman du souffle</span><span>${s.progress.talisman?'Recueilli':'Non découvert'}</span></div>${s.progress.cycle?`<div class="stat-line"><span>Veille en cours</span><span>${romains[s.progress.cycle]}</span></div>`:''}<p>Merci d’avoir joué à cette première démo.</p><button class="primary" id="veille" ${veilOn?'':'disabled'}>${veilOn?'Entrer dans la veille':'Le serment se dénoue'}</button><button class="secondary" id="explore">Continuer à explorer</button><button class="text-button" id="again">Recommencer la démo</button>`,'victory');
- $('veille').onclick=()=>{if(enterVeille(s)){renderer.camera={x:s.player.x,y:s.player.y};resume();toast('Les cendres se relèvent — veille '+romains[s.progress.cycle]+'.');}};
+function victory(){save();bell();const veilOn=s.progress.cycle<3,romains=['','I','II','III'],m=veilOn?Math.pow(1.4,s.progress.cycle+1):1;
+ setModal(`<div class="eyebrow">LE SERMENT EST ROMPU</div><h2>Enfin, le silence.</h2><p>Le gardien s’effondre. Pour la première fois depuis des siècles, la cloche se tait. Une lumière pâle traverse les pierres.</p><div class="stat-line"><span>Chutes du pèlerin</span><span>${s.progress.deaths}</span></div><div class="stat-line"><span>Raccourci</span><span>${s.progress.shortcut?'Ouvert':'Non découvert'}</span></div><div class="stat-line"><span>Talisman du souffle</span><span>${s.progress.talisman?'Recueilli':'Non découvert'}</span></div>${s.progress.cycle?`<div class="stat-line"><span>Veille en cours</span><span>${romains[s.progress.cycle]}</span></div>`:''}<p>Merci d’avoir joué à cette première démo.</p><p><strong>Entrer dans la veille</strong> poursuit le pèlerinage en boucle : tout demeure — fragments, améliorations, butin — mais les cendres du sanctuaire se relèvent plus féroces, avec ×${(Math.round(m*100)/100).toString().replace('.',',')} PV et dégâts, et une fiole de plus.</p><button class="primary" id="veille" ${veilOn?'':'disabled'}>${veilOn?'Entrer dans la veille ('+romains[s.progress.cycle+1]+') — ennemis renforcés':'Le serment se dénoue'}</button><button class="secondary" id="explore">Continuer à explorer</button><button class="text-button" id="again">Recommencer la démo</button>`,'victory');
+ $('veille').onclick=()=>{if(enterVeille(s)){renderer.camera={x:s.player.x,y:s.player.y};resume();toast('Les cendres se relèvent — veille '+romains[s.progress.cycle]+', ennemis renforcés.');}};
  $('explore').onclick=resume;$('again').onclick=confirmRestart;}
 function toggleMap(){if(mode==='map'){resume();return;}if(mode!=='play')return;mode='map';keys.clear();renderer.drawMap($('map'),s);$('map-screen').hidden=false;}
 $('map-button').onclick=toggleMap;$('close-map').onclick=resume;
@@ -87,8 +87,13 @@ function gamepad(input){
 function hud(){
  const p=s.player;$('hp-bar').style.width=p.hp/p.maxHp*100+'%';$('stamina-bar').style.width=p.stamina+'%';$('hp-value').textContent=Math.ceil(p.hp)+' / '+p.maxHp;$('flasks').textContent=p.flasks;$('souls').textContent=p.souls;$('talisman').hidden=!s.progress.talisman;
  const room=ROOMS.find(r=>r.id===s.area);$('area').textContent=room?.name.toUpperCase()||'LE SANCTUAIRE';
- const veille=s.progress.cycle?'Veille '+['','I','II','III'][s.progress.cycle]+' · ':'';
- $('objective').textContent=veille+(s.progress.bossDefeated?'La cloche s’est tue.':s.bossActive?'Briser le serment du gardien':'Atteindre le clocher · au nord');
+ $('objective').textContent=s.progress.bossDefeated?'La cloche s’est tue.':s.bossActive?'Briser le serment du gardien':'Atteindre le clocher · au nord';
+ // Niveau de veille affiché en permanence ; le survol détaille les multiplicateurs.
+ const cyc=s.progress.cycle,badge=$('veille-badge');
+ badge.hidden=!cyc;
+ if(cyc){const m=Math.pow(1.4,cyc),x=n=>(Math.round(n*100)/100).toString().replace('.',',');
+  badge.textContent='Veille '+['','I','II','III'][cyc];
+  badge.dataset.tip=`Veille ${['','I','II','III'][cyc]} — les cendres du sanctuaire se relèvent.\nEnnemis et gardien : PV ×${x(m)}, dégâts ×${x(m)}.\nFioles : ${3+cyc} au lieu de 3.\nFragments, améliorations et butin conservés.`;}
  const n=nearby(s);$('interact').hidden=!n||s.dead;if(n)$('interact').innerHTML=`<kbd>${usingPad?'X':'E'}</kbd> ${n.label}`;
  const boss=s.enemies.find(e=>e.type==='boss');$('boss-hud').hidden=!s.bossActive;$('boss-bar').style.width=boss.hp/boss.maxHp*100+'%';$('boss-phase').textContent=boss.phase===2?'LES CHAÎNES BRISÉES':'LE SERMENT';
 }
