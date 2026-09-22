@@ -40,6 +40,7 @@ La page doit avoir le focus ; le jeu se met en pause lorsque la fenêtre perd le
 3. Revenir vers l’ouest par la galerie des serments et entrer au clocher.
 4. Le passage sud du clocher permet d’ouvrir la grille vers le refuge.
 5. Vaincre le Gardien du Clocher et sa seconde phase.
+6. Entamer la Veille : le pèlerinage recommence, le sanctuaire se relève plus féroce.
 
 Les préparations d’attaque sont signalées en ambre. La roulade protège brièvement ; l’attaque lourde interrompt les ennemis ordinaires et une roulade peut l’interrompre après le coup porté. La parade (clic droit) au début du geste renverse un assaillant de front ; la frappe suivante est une riposte fatale. Les projectiles, la charge et la frappe au sol du boss ne se parent pas. Une action pressée pendant un geste est mise en mémoire et part dès que le geste se termine.
 Se reposer restaure vie et fioles, réinitialise les ennemis ordinaires, et permet d’améliorer la vigueur ou le soin.
@@ -51,6 +52,10 @@ Sauvegarde locale versionnée dans `localStorage` : fragments, améliorations, t
 Après rechargement, le pèlerin revient au refuge avec vie et fioles restaurées. La sauvegarde n’est pas synchronisée entre navigateurs ou origines.
 La commande « Recommencer la démo » demande confirmation avant de remplacer cette progression.
 Si le navigateur bloque le stockage, la partie reste jouable et l’interface l’indique.
+
+Après une victoire, « Entrer dans la veille » relance le pèlerinage : tout est conservé, mais les ennemis et le boss reviennent avec ×1,4 PV et dégâts par cycle, et le pèlerin gagne une fiole. Trois cycles au plus. L’écran de victoire rappelle ce que ce choix implique avant de l’accepter.
+
+Le cycle en cours est affiché en permanence par un badge « Veille I / II / III » sous l’objectif du HUD ; son survol détaille les multiplicateurs de PV et de dégâts, le bonus de fioles et ce qui est conservé. Le badge reste masqué pendant le premier parcours.
 
 ## Version statique à distribuer
 
@@ -67,7 +72,7 @@ Les assets sont inclus : aucune requête distante n’est nécessaire pendant le
 npm test
 ```
 
-13 tests couvrent déplacements, collisions, portée/direction des coups, endurance, esquive, interruption du soin, mort/récupération, progression, sauvegarde malformée, boss et accessibilité des zones.
+21 tests couvrent déplacements, collisions, portée/direction des coups, endurance, esquive, interruption du soin, mort/récupération, progression, sauvegarde (y compris malformée et cycle de veille), boss, parade et mémoire d’actions, veille et accessibilité des zones.
 
 Un parcours navigateur automatisé est fourni dans `scripts/browser-smoke.cjs` (Playwright requis séparément). Exemple si Playwright est disponible :
 
@@ -80,7 +85,7 @@ Il teste les entrées clavier/souris, menus, sauvegarde, combat, mort, victoire,
 ## État et limites
 
 - Six espaces connectés, trois archétypes d’ennemis, boss à deux phases, refuge, raccourci et détour récompensé.
-- Graphismes originaux procéduraux provisoires, débris CC0 Stealthix, sons CC0 Kenney. Sources et licences dans `CREDITS.md`.
+- Sprites originaux du pèlerin en pixel art HD-2D, décors procéduraux, débris CC0 Stealthix et sons CC0 Kenney. Sources et licences dans `CREDITS.md`.
 - Interface française, contrôles manette standard, réglages du son et réduction des effets.
 - Cible : ordinateur. Pas de commandes tactiles.
 - Le ressenti, les animations finales, la durée de 15–25 minutes et l’équilibrage doivent encore être validés par des essais humains.
@@ -90,7 +95,7 @@ Il teste les entrées clavier/souris, menus, sauvegarde, combat, mort, victoire,
 ## Organisation
 
 - `src/core.js` : simulation, monde, combats et progression ; indépendante du DOM.
-- `src/render.js` : terrain précalculé, personnages provisoires, caméra et carte.
+- `src/render.js` : terrain précalculé, sprites du pèlerin, caméra et carte.
 - `src/main.js` : boucle, interface, commandes, audio et sauvegarde.
 - `assets/` : ressources livrées avec le jeu et licences.
 - `docs/ROADMAP.md` : jalons et travail restant.
