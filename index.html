@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#111a1b">
   <meta name="description" content="La Cloche des Cendres — une aventure dark fantasy en pixel art. Une démo jouable directement dans votre navigateur.">
   <title>La Cloche des Cendres</title>
@@ -16,7 +16,7 @@
     <section id="title-screen" class="screen title-screen">
       <div class="title-content"><div class="eyebrow"><span></span> UN SANCTUAIRE OUBLIÉ</div><h1>La Cloche<br>des <em>Cendres</em></h1><p class="intro">La cloche sonne encore.<br>Quelqu’un doit faire taire le gardien.</p><button id="start" class="primary">Entrer dans le sanctuaire <span>↗</span></button><button id="title-credits" class="text-button">À propos & crédits</button><div class="title-meta"><span>EXPLORER</span><i>◆</i><span>APPRENDRE</span><i>◆</i><span>RECOMMENCER</span></div></div>
       <div class="title-note"><span class="small-cross">✧</span><span>Une flamme dans les ruines.<br><strong>Le dernier refuge.</strong></span></div>
-      <div class="title-bottom"><span>UNE AVENTURE EN PIXEL ART</span><span>CLAVIER & SOURIS / MANETTE</span></div>
+      <div class="title-bottom"><span>UNE AVENTURE EN PIXEL ART</span><span>CLAVIER & SOURIS / MANETTE / TACTILE</span></div>
     </section>
     <section id="hud" hidden aria-label="État du personnage">
       <div class="vitals"><div class="player-seal">✧</div><div class="bars"><div class="bar-label"><span>LE PÈLERIN</span><span id="hp-value">100 / 100</span></div><div class="meter health"><div id="hp-bar"></div></div><div class="meter stamina"><div id="stamina-bar"></div></div></div></div>
@@ -26,6 +26,22 @@
       <div id="boss-hud" hidden><div class="boss-heading"><span>LE GARDIEN DU CLOCHER</span><span id="boss-phase">LE SERMENT</span></div><div class="meter boss"><div id="boss-bar"></div></div></div>
       <div id="interact" hidden></div><div id="toast" role="status" aria-live="polite"></div><div id="area-banner"></div>
     </section>
+    <div id="touch-controls" hidden>
+      <div id="stick-zone" aria-label="Stick de déplacement virtuel"><div id="stick-base"><div id="stick-knob"></div></div></div>
+      <div id="touch-buttons">
+        <div class="touch-row">
+          <button type="button" class="touch-btn" data-action="heal" aria-label="Boire une fiole">♡</button>
+          <button type="button" class="touch-btn" data-action="parry" aria-label="Parade">⛨</button>
+          <button type="button" class="touch-btn" data-action="roll" aria-label="Esquive">⟳</button>
+        </div>
+        <div class="touch-row">
+          <button type="button" class="touch-btn" data-action="interact" aria-label="Interagir">✦</button>
+          <button type="button" class="touch-btn" data-action="heavy" aria-label="Attaque lourde">⚒</button>
+          <button type="button" class="touch-btn touch-main" data-action="light" aria-label="Attaque légère">⚊</button>
+        </div>
+      </div>
+    </div>
+    <div id="rotate-hint">Tournez l’appareil<br><strong>en paysage</strong></div>
     <section id="modal" class="screen modal" hidden><div class="modal-card" id="modal-content"></div></section>
     <section id="map-screen" class="screen map-screen" hidden><div class="map-card"><div class="eyebrow">LES TERRES DU SILENCE</div><h2>Le sanctuaire</h2><canvas id="map" width="580" height="440" aria-label="Carte du sanctuaire"></canvas><div class="map-legend"><span>● Pèlerin</span><span>✧ Refuge</span><span>◆ Clocher</span><span>❖ Talisman</span></div><button id="close-map" class="secondary">Reprendre <kbd>M</kbd></button></div></section>
     <div id="fatal" hidden role="alert">Le jeu n’a pas pu démarrer. Rechargez la page dans un navigateur récent.</div>

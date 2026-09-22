@@ -7,8 +7,21 @@ try{stored=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');}catch{storageAvai
 let s=createGame(stored),mode='title',lastTime=0,toastTimer=0,areaTimer=0,stepTimer=0,autosave=0;
 let reduced=matchMedia('(prefers-reduced-motion: reduce)').matches,muted=false,volume=.3;
 const renderer=new Renderer($('game'));renderer.resize();
-const keys=new Set();let pointer={x:0,y:0,active:false},padButtons=[],usingPad=false;
+const keys=new Set();let pointer={x:0,y:0,active:false},padButtons=[],usingPad=false,usingTouch=false;
 let holdLeft=0;
+const stick={id:null,ox:0,oy:0,x:0,y:0};
+// Préférence tactile : auto (détection), on (forcé), off (désactivé) — persistée à part de la sauvegarde de jeu.
+let touchPref='auto';try{touchPref=localStorage.getItem('cloche-touch-mode')||'auto';}catch{}
+let autoTouch=false;
+function applyTouch(){const on=touchPref==='on'||(touchPref==='auto'&&autoTouch);
+ if(on&&!usingTouch){usingTouch=true;document.body.classList.add('touch');if(mode!=='title')$('touch-controls').hidden=false;}
+ else if(!on&&usingTouch){usingTouch=false;document.body.classList.remove('touch');$('touch-controls').hidden=true;resetStick();}
+}
+function enableTouch(){autoTouch=true;applyTouch();}
+function setTouchMode(pref){touchPref=pref;try{localStorage.setItem('cloche-touch-mode',pref);}catch{}applyTouch();}
+function resetStick(){stick.id=null;stick.x=0;stick.y=0;$('stick-zone').classList.remove('active');$('stick-knob').style.transform='translate(-50%,-50%)';}
+if(matchMedia('(pointer: coarse)').matches||touchPref==='on')enableTouch();
+window.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'){pointer.active=false;enableTouch();}},{capture:true});
 const audioNames=['knifeSlice','knifeSlice2','footstep00','footstep01','cloth1','metalPot1','handleCoins','doorOpen_1','bookOpen'];
 const audio=Object.fromEntries(audioNames.map(name=>[name,new Audio(new URL('../assets/audio/'+name+'.ogg',import.meta.url).href)]));
 let audioContext;
@@ -18,12 +31,12 @@ function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(serialize(s)));
 if(!storageAvailable)$('saved').textContent='SAUVEGARDE INDISPONIBLE';
 if(stored)$('start').innerHTML='Reprendre le pèlerinage <span>↗</span>';
 function toast(text){$('toast').textContent=text;$('toast').classList.add('show');toastTimer=3.7;}
-function setModal(html,nextMode){mode=nextMode;keys.clear();$('modal-content').innerHTML=html;$('modal').hidden=false;$('map-screen').hidden=true;}
-function resume(){mode='play';keys.clear();$('modal').hidden=true;$('map-screen').hidden=true;$('game').focus();lastTime=performance.now();}
-function pause(){if(mode!=='play'&&mode!=='map')return;holdLeft=0;save();setModal(`<div class="eyebrow">LE TEMPS SUSPENDU</div><h2>Une halte dans les cendres.</h2><p>Le sanctuaire peut attendre.</p><button class="primary" id="resume">Reprendre le pèlerinage</button><button class="secondary" id="help">Commandes & conseils</button><label>Volume <input id="volume" aria-label="Volume sonore" type="range" min="0" max="100" value="${volume*100}"></label><label>Réduire les effets et secousses <input type="checkbox" id="reduced" ${reduced?'checked':''}></label><button class="secondary" id="credits">À propos & crédits</button><button class="text-button" id="restart">Recommencer la démo</button>`,'pause');
- $('resume').onclick=resume;$('help').onclick=help;$('credits').onclick=()=>credits(false);$('restart').onclick=confirmRestart;$('volume').oninput=e=>volume=Number(e.target.value)/100;$('reduced').onchange=e=>reduced=e.target.checked;
+function setModal(html,nextMode){mode=nextMode;keys.clear();resetStick();$('touch-controls').hidden=true;$('modal-content').innerHTML=html;$('modal').hidden=false;$('map-screen').hidden=true;}
+function resume(){mode='play';keys.clear();resetStick();$('touch-controls').hidden=!usingTouch;$('modal').hidden=true;$('map-screen').hidden=true;$('game').focus();lastTime=performance.now();}
+function pause(){if(mode!=='play'&&mode!=='map')return;holdLeft=0;save();setModal(`<div class="eyebrow">LE TEMPS SUSPENDU</div><h2>Une halte dans les cendres.</h2><p>Le sanctuaire peut attendre.</p><button class="primary" id="resume">Reprendre le pèlerinage</button><button class="secondary" id="help">Commandes & conseils</button><label>Volume <input id="volume" aria-label="Volume sonore" type="range" min="0" max="100" value="${volume*100}"></label><label>Réduire les effets et secousses <input type="checkbox" id="reduced" ${reduced?'checked':''}></label><label>Commandes tactiles <select id="touch-mode" aria-label="Commandes tactiles"><option value="auto"${touchPref==='auto'?' selected':''}>Auto</option><option value="on"${touchPref==='on'?' selected':''}>Toujours</option><option value="off"${touchPref==='off'?' selected':''}>Jamais</option></select></label><button class="secondary" id="credits">À propos & crédits</button><button class="text-button" id="restart">Recommencer la démo</button>`,'pause');
+ $('resume').onclick=resume;$('help').onclick=help;$('credits').onclick=()=>credits(false);$('restart').onclick=confirmRestart;$('volume').oninput=e=>volume=Number(e.target.value)/100;$('reduced').onchange=e=>reduced=e.target.checked;$('touch-mode').onchange=e=>setTouchMode(e.target.value);
 }
-function help(){setModal(`<div class="eyebrow">LES GESTES DU PÈLERIN</div><h2>Observer. Esquiver. Riposter.</h2><div class="control-grid"><span>ZQSD / WASD / Flèches</span><span>Se déplacer</span><span>Souris</span><span>Orienter l’épée</span><span>Clic gauche court / J</span><span>Attaque légère</span><span>Clic gauche maintenu / K</span><span>Attaque lourde</span><span>Clic droit</span><span>Parade</span><span>Espace</span><span>Esquive directionnelle</span><span>R / F</span><span>Boire une fiole</span><span>E / Entrée</span><span>Interagir</span><span>M / Échap</span><span>Carte / Pause</span></div><p>Manette standard : stick gauche pour marcher, droit pour viser ; RB pour l’attaque légère, RT pour la lourde, LB pour la parade, A ou B pour esquiver, Y pour soigner, X pour interagir, Start pour la pause, Select pour la carte.</p><p>Les marques ambrées annoncent les attaques. Attendez une ouverture : l’attaque lourde interrompt les ennemis ordinaires, et une roulade peut l’interrompre une fois le coup porté. La parade, au début du geste, renverse un assaillant de front : frappez-le aussitôt, la riposte est fatale. Une action pressée pendant un geste part à la fin de celui-ci. Le refuge recharge les fioles, mais réveille les ennemis.</p><button class="primary" id="help-back">Entrer dans les ruines</button>`,'help');$('help-back').onclick=resume;}
+function help(){setModal(`<div class="eyebrow">LES GESTES DU PÈLERIN</div><h2>Observer. Esquiver. Riposter.</h2><div class="control-grid"><span>ZQSD / WASD / Flèches</span><span>Se déplacer</span><span>Souris</span><span>Orienter l’épée</span><span>Clic gauche court / J</span><span>Attaque légère</span><span>Clic gauche maintenu / K</span><span>Attaque lourde</span><span>Clic droit</span><span>Parade</span><span>Espace</span><span>Esquive directionnelle</span><span>R / F</span><span>Boire une fiole</span><span>E / Entrée</span><span>Interagir</span><span>M / Échap</span><span>Carte / Pause</span></div><p>Manette standard : stick gauche pour marcher, droit pour viser ; RB pour l’attaque légère, RT pour la lourde, LB pour la parade, A ou B pour esquiver, Y pour soigner, X pour interagir, Start pour la pause, Select pour la carte.</p>${usingTouch?'<p>Écran tactile : stick virtuel à gauche pour marcher, boutons à droite — ⚊ légère, ⚒ lourde, ⛨ parade, ⟳ esquive, ♡ fiole, ✦ interagir. L’épée vise automatiquement l’ennemi le plus proche.</p>':''}<p>Les marques ambrées annoncent les attaques. Attendez une ouverture : l’attaque lourde interrompt les ennemis ordinaires, et une roulade peut l’interrompre une fois le coup porté. La parade, au début du geste, renverse un assaillant de front : frappez-le aussitôt, la riposte est fatale. Une action pressée pendant un geste part à la fin de celui-ci. Le refuge recharge les fioles, mais réveille les ennemis.</p><button class="primary" id="help-back">Entrer dans les ruines</button>`,'help');$('help-back').onclick=resume;}
 function credits(fromTitle){setModal(`<div class="eyebrow">UNE PREMIÈRE ÉTINCELLE</div><h2>La Cloche des Cendres</h2><p>Démo originale de dark fantasy en vue trois quarts. Construite en JavaScript et Canvas 2D. Aucun compte ni serveur de jeu nécessaire.</p><p>Débris de décor : <a href="https://opengameart.org/content/32x32-dungeon-tileset" target="_blank" rel="noreferrer">Stealthix — Dungeon Tileset</a> · CC0.<br>Sons : <a href="https://kenney.nl/assets/rpg-audio" target="_blank" rel="noreferrer">Kenney — RPG Audio</a> · CC0.</p><p>Le pèlerin utilise des sprites originaux en pixel art HD-2D. Architecture, arbres, effets et son de cloche sont des créations procédurales du prototype.</p><p>La progression est conservée dans ce navigateur. Les animations et l’équilibrage restent à affiner avec vos retours.</p><button class="primary" id="credits-back">Retour</button>`,'credits');$('credits-back').onclick=()=>{if(fromTitle){mode='title';$('modal').hidden=true;}else{mode='play';pause();}};}
 function confirmRestart(){setModal(`<div class="eyebrow">UN NOUVEAU PÈLERINAGE</div><h2>Recommencer ?</h2><p>La progression locale, les améliorations et les fragments de cette démo seront effacés.</p><button class="primary" id="confirm-restart">Recommencer depuis le refuge</button><button class="secondary" id="cancel-restart">Conserver ma progression</button>`,'confirm');$('confirm-restart').onclick=()=>{s=createGame();save();renderer.camera={x:s.player.x,y:s.player.y};resume();toast('Un nouveau pèlerin se lève.');};$('cancel-restart').onclick=()=>{mode='play';pause();};}
 function shrine(){
@@ -37,14 +50,14 @@ function victory(){save();bell();const veilOn=s.progress.cycle<3,romains=['','I'
  setModal(`<div class="eyebrow">LE SERMENT EST ROMPU</div><h2>Enfin, le silence.</h2><p>Le gardien s’effondre. Pour la première fois depuis des siècles, la cloche se tait. Une lumière pâle traverse les pierres.</p><div class="stat-line"><span>Chutes du pèlerin</span><span>${s.progress.deaths}</span></div><div class="stat-line"><span>Raccourci</span><span>${s.progress.shortcut?'Ouvert':'Non découvert'}</span></div><div class="stat-line"><span>Talisman du souffle</span><span>${s.progress.talisman?'Recueilli':'Non découvert'}</span></div>${s.progress.cycle?`<div class="stat-line"><span>Veille en cours</span><span>${romains[s.progress.cycle]}</span></div>`:''}<p>Merci d’avoir joué à cette première démo.</p><p><strong>Entrer dans la veille</strong> poursuit le pèlerinage en boucle : tout demeure — fragments, améliorations, butin — mais les cendres du sanctuaire se relèvent plus féroces, avec ×${(Math.round(m*100)/100).toString().replace('.',',')} PV et dégâts, et une fiole de plus.</p><button class="primary" id="veille" ${veilOn?'':'disabled'}>${veilOn?'Entrer dans la veille ('+romains[s.progress.cycle+1]+') — ennemis renforcés':'Le serment se dénoue'}</button><button class="secondary" id="explore">Continuer à explorer</button><button class="text-button" id="again">Recommencer la démo</button>`,'victory');
  $('veille').onclick=()=>{if(enterVeille(s)){renderer.camera={x:s.player.x,y:s.player.y};resume();toast('Les cendres se relèvent — veille '+romains[s.progress.cycle]+', ennemis renforcés.');}};
  $('explore').onclick=resume;$('again').onclick=confirmRestart;}
-function toggleMap(){if(mode==='map'){resume();return;}if(mode!=='play')return;mode='map';keys.clear();renderer.drawMap($('map'),s);$('map-screen').hidden=false;}
+function toggleMap(){if(mode==='map'){resume();return;}if(mode!=='play')return;mode='map';keys.clear();resetStick();$('touch-controls').hidden=true;renderer.drawMap($('map'),s);$('map-screen').hidden=false;}
 $('map-button').onclick=toggleMap;$('close-map').onclick=resume;
 $('pause-button').onclick=()=>{if(mode==='play'||mode==='map')pause();else if(mode==='pause')resume();};
 $('brand').onclick=e=>{e.preventDefault();pause();};$('title-credits').onclick=()=>credits(true);
 $('sound').onclick=()=>{muted=!muted;$('sound').textContent=muted?'♪̸':'♫';$('sound').setAttribute('aria-label',muted?'Activer le son':'Désactiver le son');};
 $('fullscreen').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen?.();else $('app').requestFullscreen?.().catch(()=>toast('Le plein écran est indisponible dans cette fenêtre.'));};
-$('start').onclick=()=>{mode='play';$('title-screen').hidden=true;$('hud').hidden=false;bell();if(!stored)help();else toast('La flamme se souvient de vous.');save();};
-function movement(){let x=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('KeyQ')||keys.has('ArrowLeft'));let y=Number(keys.has('KeyS')||keys.has('ArrowDown'))-Number(keys.has('KeyW')||keys.has('KeyZ')||keys.has('ArrowUp'));return {x,y};}
+$('start').onclick=()=>{mode='play';$('title-screen').hidden=true;$('hud').hidden=false;if(usingTouch)$('touch-controls').hidden=false;bell();if(!stored)help();else toast('La flamme se souvient de vous.');save();};
+function movement(){if(stick.id!==null)return {x:stick.x,y:stick.y};let x=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('KeyQ')||keys.has('ArrowLeft'));let y=Number(keys.has('KeyS')||keys.has('ArrowDown'))-Number(keys.has('KeyW')||keys.has('KeyZ')||keys.has('ArrowUp'));return {x,y};}
 function action(kind){if(mode!=='play')return;startAction(s,kind,lastInput);}
 let lastInput={x:0,y:0};
 window.addEventListener('keydown',e=>{
@@ -56,13 +69,44 @@ window.addEventListener('keydown',e=>{
  if(e.code==='Space')action('roll');if(['KeyR','KeyF'].includes(e.code))action('heal');if(e.code==='KeyJ')action('light');if(e.code==='KeyK')action('heavy');if(['KeyE','Enter'].includes(e.code))interact(s);
 });
 window.addEventListener('keyup',e=>keys.delete(e.code));
-$('game').addEventListener('pointermove',e=>{pointer={x:e.clientX,y:e.clientY,active:true};usingPad=false;});
-$('game').addEventListener('pointerdown',e=>{pointer={x:e.clientX,y:e.clientY,active:true};usingPad=false;if(mode==='play'){const target=renderer.toWorld(pointer.x,pointer.y);if(!s.player.action)s.player.face=Math.atan2(target.y-s.player.y,target.x-s.player.x);if(e.button===2)action('parry');else if(e.button===0)holdLeft=performance.now();}});
-window.addEventListener('pointerup',e=>{if(e.button===0&&holdLeft){const held=performance.now()-holdLeft;holdLeft=0;if(held<190)action('light');}});
+$('game').addEventListener('pointermove',e=>{if(e.pointerType==='touch')return;pointer={x:e.clientX,y:e.clientY,active:true};usingPad=false;});
+$('game').addEventListener('pointerdown',e=>{if(e.pointerType==='touch'){pointer.active=false;return;}pointer={x:e.clientX,y:e.clientY,active:true};usingPad=false;if(mode==='play'){const target=renderer.toWorld(pointer.x,pointer.y);if(!s.player.action)s.player.face=Math.atan2(target.y-s.player.y,target.x-s.player.x);if(e.button===2)action('parry');else if(e.button===0)holdLeft=performance.now();}});
+window.addEventListener('pointerup',e=>{if(e.pointerType==='touch')return;if(e.button===0&&holdLeft){const held=performance.now()-holdLeft;holdLeft=0;if(held<190)action('light');}});
 $('app').addEventListener('contextmenu',e=>e.preventDefault());
-window.addEventListener('blur',()=>{keys.clear();if(mode==='play')pause();});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){keys.clear();if(mode==='play')pause();}});
+window.addEventListener('blur',()=>{keys.clear();resetStick();if(mode==='play')pause();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){keys.clear();resetStick();if(mode==='play')pause();}});
 window.addEventListener('resize',()=>renderer.resize());window.addEventListener('pagehide',()=>{if(mode!=='title')save();});
+// Stick virtuel : doigt flottant dans la zone bas-gauche, capture multi-touch.
+{
+ const zone=$('stick-zone'),base=$('stick-base'),knob=$('stick-knob'),R=44;
+ zone.addEventListener('pointerdown',e=>{
+  if(stick.id!==null)return;
+  e.preventDefault();usingPad=false;stick.id=e.pointerId;zone.setPointerCapture(e.pointerId);
+  stick.ox=e.clientX;stick.oy=e.clientY;zone.classList.add('active');
+  const zr=zone.getBoundingClientRect();base.style.left=e.clientX-zr.left+'px';base.style.top=e.clientY-zr.top+'px';
+ });
+ zone.addEventListener('pointermove',e=>{
+  if(e.pointerId!==stick.id)return;
+  const dx=e.clientX-stick.ox,dy=e.clientY-stick.oy,len=Math.hypot(dx,dy);
+  const m=len?Math.min(len,R):0,nx=len?dx/len:0,ny=len?dy/len:0;
+  stick.x=nx*m/R;stick.y=ny*m/R;
+  knob.style.transform=`translate(calc(-50% + ${nx*m}px),calc(-50% + ${ny*m}px))`;
+ });
+ const end=e=>{if(e.pointerId===stick.id)resetStick();};
+ zone.addEventListener('pointerup',end);zone.addEventListener('pointercancel',end);
+ // Boutons d’action : pointerdown seul, pas de double tir via click.
+ for(const btn of document.querySelectorAll('#touch-buttons .touch-btn')){
+  btn.addEventListener('pointerdown',e=>{
+   e.preventDefault();e.stopPropagation();usingPad=false;
+   btn.setPointerCapture(e.pointerId);btn.classList.add('pressed');
+   const kind=btn.dataset.action;
+   if(kind==='interact')interact(s);else action(kind);
+  });
+  const up=()=>btn.classList.remove('pressed');
+  btn.addEventListener('pointerup',up);btn.addEventListener('pointercancel',up);btn.addEventListener('pointerleave',up);
+ }
+}
+function nearestFoe(){return s.enemies.filter(e=>!e.dead&&distance(e,s.player)<145).sort((a,b)=>distance(a,s.player)-distance(b,s.player))[0];}
 function gamepad(input){
  const pad=Array.from(navigator.getGamepads?.()||[]).find(Boolean);if(!pad){padButtons=[];return input;}
  const dead=v=>Math.abs(v)>.2?v:0;const x=dead(pad.axes[0]||0),y=dead(pad.axes[1]||0),rx=dead(pad.axes[2]||0),ry=dead(pad.axes[3]||0);
@@ -80,9 +124,9 @@ function gamepad(input){
  }
  padButtons=buttons;
  if(usingPad){input={x,y};if(rx||ry)input.angle=Math.atan2(ry,rx);else if(x||y){
-  const target=s.enemies.filter(e=>!e.dead&&distance(e,s.player)<145).sort((a,b)=>distance(a,s.player)-distance(b,s.player))[0];
-  input.angle=target?Math.atan2(target.y-s.player.y,target.x-s.player.x):Math.atan2(y,x);
- }}return input;
+   const target=nearestFoe();
+   input.angle=target?Math.atan2(target.y-s.player.y,target.x-s.player.x):Math.atan2(y,x);
+  }}return input;
 }
 function hud(){
  const p=s.player;$('hp-bar').style.width=p.hp/p.maxHp*100+'%';$('stamina-bar').style.width=p.stamina+'%';$('hp-value').textContent=Math.ceil(p.hp)+' / '+p.maxHp;$('flasks').textContent=p.flasks;$('souls').textContent=p.souls;$('talisman').hidden=!s.progress.talisman;
@@ -94,7 +138,9 @@ function hud(){
  if(cyc){const m=Math.pow(1.4,cyc),x=n=>(Math.round(n*100)/100).toString().replace('.',',');
   badge.textContent='Veille '+['','I','II','III'][cyc];
   badge.dataset.tip=`Veille ${['','I','II','III'][cyc]} — les cendres du sanctuaire se relèvent.\nEnnemis et gardien : PV ×${x(m)}, dégâts ×${x(m)}.\nFioles : ${3+cyc} au lieu de 3.\nFragments, améliorations et butin conservés.`;}
- const n=nearby(s);$('interact').hidden=!n||s.dead;if(n)$('interact').innerHTML=`<kbd>${usingPad?'X':'E'}</kbd> ${n.label}`;
+ const n=nearby(s);$('interact').hidden=!n||s.dead;
+ if(n)$('interact').innerHTML=`<kbd>${usingPad?'X':usingTouch?'✦':'E'}</kbd> ${n.label}`;
+ $('touch-buttons').querySelector('[data-action="interact"]')?.toggleAttribute('data-active',!!n&&!s.dead);
  const boss=s.enemies.find(e=>e.type==='boss');$('boss-hud').hidden=!s.bossActive;$('boss-bar').style.width=boss.hp/boss.maxHp*100+'%';$('boss-phase').textContent=boss.phase===2?'LES CHAÎNES BRISÉES':'LE SERMENT';
 }
 function events(){while(s.events.length){const e=s.events.shift();if(e.type==='sound')sound(e.name);if(e.type==='toast')toast(e.text);if(e.type==='save')save();if(e.type==='shrine')shrine();if(e.type==='death')death();if(e.type==='victory')victory();if(e.type==='boss')bell();if(e.type==='area'){$('area-banner').textContent=e.room.name;$('area-banner').classList.add('show');areaTimer=3;}}}
@@ -102,7 +148,9 @@ function frame(now){
  const dt=Math.min((now-lastTime)/1000||.016,.04);lastTime=now;
  try{
   let input=movement();
-  if(pointer.active&&!usingPad){const p=renderer.toWorld(pointer.x,pointer.y);input.angle=Math.atan2(p.y-s.player.y,p.x-s.player.x);}else if(input.x||input.y)input.angle=Math.atan2(input.y,input.x);
+  if(pointer.active&&!usingPad){const p=renderer.toWorld(pointer.x,pointer.y);input.angle=Math.atan2(p.y-s.player.y,p.x-s.player.x);}
+  else if(usingTouch&&(input.x||input.y)){const target=nearestFoe();input.angle=target?Math.atan2(target.y-s.player.y,target.x-s.player.x):Math.atan2(input.y,input.x);}
+  else if(input.x||input.y)input.angle=Math.atan2(input.y,input.x);
   input=gamepad(input);lastInput=input;
   if(mode==='play'){
    holdLeft&&performance.now()-holdLeft>=190&&(holdLeft=0,action('heavy'));

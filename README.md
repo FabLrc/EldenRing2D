@@ -17,20 +17,21 @@ Un autre serveur statique convient également. Le double-clic `file://` n’est 
 
 ## Commandes
 
-| Action | Clavier / souris | Manette standard |
-| --- | --- | --- |
-| Déplacement | ZQSD, WASD ou flèches | Stick gauche |
-| Orientation | Souris, ou déplacement sans souris | Stick droit ; assistance à proximité sinon |
-| Attaque légère | Clic gauche court / J | RB |
-| Attaque lourde | Clic gauche maintenu / K | RT |
-| Parade | Clic droit | LB |
-| Esquive | Espace | A ou B |
-| Soin | R ou F | Y |
-| Interaction | E / Entrée | X |
-| Carte | M | Select |
-| Pause | Échap | Start |
+| Action | Clavier / souris | Manette standard | Tactile |
+| --- | --- | --- | --- |
+| Déplacement | ZQSD, WASD ou flèches | Stick gauche | Stick virtuel (bas-gauche) |
+| Orientation | Souris, ou déplacement sans souris | Stick droit ; assistance à proximité sinon | Auto-visée sur l’ennemi le plus proche |
+| Attaque légère | Clic gauche court / J | RB | Bouton ⚊ |
+| Attaque lourde | Clic gauche maintenu / K | RT | Bouton ⚒ |
+| Parade | Clic droit | LB | Bouton ⛨ |
+| Esquive | Espace | A ou B | Bouton ⟳ |
+| Soin | R ou F | Y | Bouton ♡ |
+| Interaction | E / Entrée | X | Bouton ✦ |
+| Carte | M | Select | Bouton Carte |
+| Pause | Échap | Start | Bouton Ⅱ |
 
-Les principaux menus se ferment avec A sur manette. Les réglages et achats utilisent le clavier ou la souris.
+Les commandes tactiles apparaissent uniquement sur un appareil à écran tactile ; le jeu reste en paysage. Dans la pause, « Commandes tactiles » force Auto / Toujours / Jamais (réglage conservé dans le navigateur).
+Les principaux menus se ferment avec A sur manette. Les réglages et achats utilisent le clavier, la souris ou le tactile.
 La page doit avoir le focus ; le jeu se met en pause lorsque la fenêtre perd le focus.
 
 ## Parcours
@@ -86,8 +87,8 @@ Il teste les entrées clavier/souris, menus, sauvegarde, combat, mort, victoire,
 
 - Six espaces connectés, trois archétypes d’ennemis, boss à deux phases, refuge, raccourci et détour récompensé.
 - Sprites originaux du pèlerin en pixel art HD-2D, décors procéduraux, débris CC0 Stealthix et sons CC0 Kenney. Sources et licences dans `CREDITS.md`.
-- Interface française, contrôles manette standard, réglages du son et réduction des effets (grain, flash, particules, secousses).
-- Cible : ordinateur. Pas de commandes tactiles.
+- Interface française, contrôles manette standard et tactile, réglages du son et réduction des effets (grain, flash, particules, secousses).
+- Cible principale : ordinateur. Tactile en paysage sur smartphone/tablette, sans changer l’expérience clavier/souris.
 - Le ressenti, les animations finales, la durée de 15–25 minutes et l’équilibrage doivent encore être validés par des essais humains.
 - Chrome a été testé automatiquement. Safari, Firefox et une manette physique restent à vérifier.
 - Aucun appel à PixelLab ni crédit de génération consommé.

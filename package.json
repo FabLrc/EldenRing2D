@@ -7,6 +7,7 @@
     "dev": "node scripts/serve.mjs",
     "start": "node scripts/serve.mjs",
     "test": "node --test tests/*.test.mjs",
+    "test:touch": "node scripts/touch-smoke.mjs",
     "build": "node scripts/build.mjs"
   },
   "devDependencies": {

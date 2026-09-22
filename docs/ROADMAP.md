@@ -15,6 +15,7 @@ PixelLab reste optionnel, uniquement après un essai du prototype.
 | 5. Boss et parcours complet | Implémenté : trois attaques, deux phases et conclusion | Duel complet sans outils de diagnostic à tester humainement |
 | 6. Direction artistique | Lumières dynamiques (lightmap), shaders WebGL (bloom, grade de zone, grain, vignette, flash), particules d’ambiance par zone, traînée d’épée ; assets CC0 intégrés | Sprites animés définitifs, variété du décor, ambiance sonore, réglage fin des teintes en essai humain |
 | 7. Livraison | Tests de simulation et navigateur, export statique | Playtests, compatibilité, performances sur matériel modeste, publication si demandée |
+| 8. Smartphone (tactile) | Implémenté : stick virtuel, grappe de boutons, auto-visée, paysage forcé, UI tactile — desktop inchangé | Validation manette et tactile sur appareil réel, confort des boutons, contraste en plein soleil |
 
 ## Prochaine séance de test
 
