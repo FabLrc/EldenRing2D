@@ -8,6 +8,10 @@ export class Renderer{
  constructor(canvas){
   this.canvas=canvas;this.c=canvas.getContext('2d',{alpha:false});this.camera={x:SHRINE.x,y:SHRINE.y};this.zoom=1.45;
   this.tiles=new Image();this.tiles.src=new URL('../assets/vendor/stealthix/tileset_dungeon.png',import.meta.url).href;
+  this.heroIdle=new Image();this.heroIdle.src=new URL('../assets/generated/ash-bell-pilgrim-idle-breath-v1.png',import.meta.url).href;
+  this.heroRunContact=new Image();this.heroRunContact.src=new URL('../assets/generated/ash-bell-pilgrim-run-contact-v1.png',import.meta.url).href;
+  this.heroRunPassing=new Image();this.heroRunPassing.src=new URL('../assets/generated/ash-bell-pilgrim-run-passing-v1.png',import.meta.url).href;
+  this.heroBackpedal=new Image();this.heroBackpedal.src=new URL('../assets/generated/ash-bell-pilgrim-backpedal-v1.png',import.meta.url).href;
   this.terrain=document.createElement('canvas');this.terrain.width=COLS*TILE;this.terrain.height=ROWS*TILE;
   this.drawTerrain();this.tiles.onload=()=>this.drawTerrain();
  }
@@ -85,6 +89,50 @@ export class Renderer{
   rect(c,x-2,y-58,4,41,'#b8b391');rect(c,x-11,y-52,22,3,'#dbc28a');rect(c,x-4,y-64,8,8,'#626b5a');
   for(let i=0;i<7;i++){const wob=Math.sin(t*5+i)*3;polygon(c,[[x-10+i*3,y-20],[x-11+i*3+wob,y-42-hash(i,4)*14],[x-5+i*3,y-20]],i%2?'#f4d48c':'#cc934f');}
   for(let i=0;i<14;i++){const yy=(t*18+i*8)%110;rect(c,x+Math.sin(i*1.8+yy*.03)*25,y-18-yy,1+(i%2),2,i%2?'#d6bb75':'#ffdc9b');}
+ }
+ heroSprite(c,p,t){
+  if(p.action||![this.heroIdle,this.heroRunContact,this.heroRunPassing,this.heroBackpedal].every(image=>image.complete&&image.naturalWidth))return false;
+  const moving=p.moving,sector=(Math.round(p.face/(Math.PI/4))+8)%8;
+  let image=this.heroIdle,sx=0,sy=0,sw,sh,flip=false,xOffset=0,drawY=-55,drawH=60,bob=0;
+  const useRow=(sheet,row)=>{
+   const unit=sheet.naturalHeight/4;
+   // Les planches récentes ont une grille régulière. Seul l’ancrage varie
+   // par rangée, afin que toutes les bottes touchent le même plan au sol.
+   const anchors=sheet===this.heroIdle?[-54,-55,-54,-51]:sheet===this.heroRunContact?[-58,-56,-49,-46]:sheet===this.heroRunPassing?[-57,-55,-50,-50]:[-55,-53,-50,-48];
+   const rows=[0,1,2,3].map(i=>({y:i*unit,h:unit,dy:anchors[i],dh:60}));
+   const r=rows[row];sy=r.y;sh=r.h;drawY=r.dy;drawH=r.dh;
+  };
+  const faceRow=()=>{
+   if([5,6,7].includes(sector))return 1;
+   if(sector===2)return 0;
+   if(sector===1||sector===3){flip=sector===3;return 3;}
+   flip=sector===4;return 2;
+  };
+  if(moving){
+   // A → B → C → D : appuis et passages alternent à une cadence de course.
+   // Quand déplacement et regard sont opposés, le chevalier garde l’ennemi
+   // en vue et utilise une planche de pas chassés dédiée.
+   const backpedal=Math.cos((p.moveFace??p.face)-p.face)<-.45;
+   if(backpedal){
+    const frame=Math.floor(p.walk/(Math.PI/1.55))&1;
+    image=this.heroBackpedal;sw=image.naturalWidth/2;sx=frame*sw;
+    useRow(image,faceRow());xOffset=frame?8:-4;bob=frame?-.8:0;if(flip)xOffset=-xOffset;
+   }else{
+    const frame=Math.floor(p.walk/(Math.PI/1.8))%4,col=frame>1?1:0;
+    image=frame%2?this.heroRunPassing:this.heroRunContact;sw=image.naturalWidth/2;sx=col*sw;
+    useRow(image,faceRow());xOffset=col?7:-5;bob=[0,-2.5,-4,-2.5][frame];if(flip)xOffset=-xOffset;
+   }
+  }else{
+   const frame=Math.floor(t/.62)&1;
+   sw=image.naturalWidth/2;sx=frame*sw;useRow(image,faceRow());xOffset=frame?9:-10;bob=frame?-.8:0;if(flip)xOffset=-xOffset;
+  }
+  c.save();c.translate(Math.round(p.x),Math.round(p.y));
+  ellipse(c,0,2,15,5,'#061217aa');
+  if(p.hitReact>0){const kick=p.hitReact/Math.max(.01,p.hitReactMax);c.translate(-Math.cos(p.kickAngle)*kick*3,-Math.sin(p.kickAngle)*kick*2);c.scale(1+kick*.1,1-kick*.06);}
+  c.translate(xOffset,8+bob);
+  if(flip)c.scale(-1,1);
+  c.drawImage(image,sx,sy,sw,sh,-40,drawY,80,drawH);
+  c.restore();return true;
  }
  knight(c,p,t,type='player'){
   const boss=type==='boss',scale=boss?1.9:1,roll=p.action?.kind==='roll';
@@ -168,7 +216,7 @@ export class Renderer{
    if(Math.abs(e.x-this.camera.x)>w/this.zoom/2+90||Math.abs(e.y-this.camera.y)>h/this.zoom/2+120)continue;
    drawables.push({y:e.y,draw:()=>{this.knight(c,e,t,e.type);if(e.hp<e.maxHp&&e.type!=='boss'){rect(c,e.x-15,e.y-53,30,3,'#15201c');rect(c,e.x-15,e.y-53,30*e.hp/e.maxHp,2,'#b0795a');}}});
   }
-  drawables.push({y:s.player.y,draw:()=>{if(s.dead){ellipse(c,s.player.x,s.player.y,18,7,'#6d5844');}else{if(s.player.invulnerable>0&&s.player.action?.kind!=='roll')c.globalAlpha=.65+Math.sin(t*40)*.25;this.knight(c,s.player,t);c.globalAlpha=1;}}});
+  drawables.push({y:s.player.y,draw:()=>{if(s.dead){ellipse(c,s.player.x,s.player.y,18,7,'#6d5844');}else{if(s.player.invulnerable>0&&s.player.action?.kind!=='roll')c.globalAlpha=.65+Math.sin(t*40)*.25;if(!this.heroSprite(c,s.player,t))this.knight(c,s.player,t);c.globalAlpha=1;}}});
   drawables.sort((a,b)=>a.y-b.y).forEach(d=>d.draw());
   // Grille du raccourci, toujours lisible.
   if(!s.progress.shortcut){rect(c,GATE.x,GATE.y-40,GATE.w,5,'#9b956f');rect(c,GATE.x,GATE.y-16,GATE.w,4,'#777b64');for(let x=GATE.x+5;x<GATE.x+GATE.w;x+=13){rect(c,x,GATE.y-44,3,65,'#888c73');rect(c,x+3,GATE.y-40,2,61,'#253b3c');}rect(c,GATE.x+GATE.w/2-5,GATE.y-10,10,10,'#baa367');}

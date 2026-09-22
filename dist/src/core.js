@@ -52,7 +52,7 @@ export function spawnEnemies(cycle=0){
 export function createGame(save){
  const v=sanitizeSave(save)||{souls:0,vigor:0,healing:0,talisman:false,shortcut:false,bossDefeated:false,drop:null,deaths:0,cycle:0,collected:[]};
  const progress={vigor:v.vigor,healing:v.healing,talisman:v.talisman,shortcut:v.shortcut,bossDefeated:v.bossDefeated,deaths:v.deaths,cycle:v.cycle,collected:v.collected};
- const p={x:SHRINE.x,y:SHRINE.y+62,r:10,face:-Math.PI/2,hp:100+v.vigor*20,maxHp:100+v.vigor*20,stamina:100,souls:v.souls,flasks:3+v.cycle,action:null,invulnerable:0,regenDelay:0,flash:0,walk:0,moving:false};
+ const p={x:SHRINE.x,y:SHRINE.y+62,r:10,face:-Math.PI/2,moveFace:-Math.PI/2,hp:100+v.vigor*20,maxHp:100+v.vigor*20,stamina:100,souls:v.souls,flasks:3+v.cycle,action:null,invulnerable:0,regenDelay:0,flash:0,walk:0,moving:false};
  const s={player:p,progress,enemies:spawnEnemies(v.cycle),drop:v.drop,effects:[],projectiles:[],events:[],time:0,dead:false,deathTimer:0,bossActive:false,shake:0,hitStop:0,area:'refuge',visits:new Set(['refuge']),kills:0};
  if(v.bossDefeated)s.enemies.find(e=>e.type==='boss').dead=true;
  return s;
@@ -236,7 +236,7 @@ export function update(s,input,dt){
     }
    }
    if(a.time>=a.duration){p.action=null;if(p.buffer){const b=p.buffer;p.buffer=null;startAction(s,b.kind,b.input);}}
-  }else if(len>.08){move(s,p,mx*118*dt,my*118*dt);p.walk+=dt*10;p.moving=true;}
+  }else if(len>.08){p.moveFace=Math.atan2(my,mx);move(s,p,mx*118*dt,my*118*dt);p.walk+=dt*10;p.moving=true;}
  const room=ROOMS.find(r=>p.x>=r.x*TILE&&p.x<(r.x+r.w)*TILE&&p.y>=r.y*TILE&&p.y<(r.y+r.h)*TILE);
  if(room&&room.id!==s.area){s.area=room.id;s.visits.add(room.id);emit(s,'area',{room});}
  if(room?.id==='boss'&&!s.progress.bossDefeated&&!s.bossActive&&p.x<FOG.x-30&&p.y<26*TILE){s.bossActive=true;emit(s,'boss');}
