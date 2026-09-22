@@ -21,8 +21,9 @@ Un autre serveur statique convient également. Le double-clic `file://` n’est 
 | --- | --- | --- |
 | Déplacement | ZQSD, WASD ou flèches | Stick gauche |
 | Orientation | Souris, ou déplacement sans souris | Stick droit ; assistance à proximité sinon |
-| Attaque légère | Clic gauche / J | RB |
-| Attaque lourde | Clic droit / K | RT |
+| Attaque légère | Clic gauche court / J | RB |
+| Attaque lourde | Clic gauche maintenu / K | RT |
+| Parade | Clic droit | LB |
 | Esquive | Espace | A ou B |
 | Soin | R ou F | Y |
 | Interaction | E / Entrée | X |
@@ -40,7 +41,7 @@ La page doit avoir le focus ; le jeu se met en pause lorsque la fenêtre perd le
 4. Le passage sud du clocher permet d’ouvrir la grille vers le refuge.
 5. Vaincre le Gardien du Clocher et sa seconde phase.
 
-Les préparations d’attaque sont signalées en ambre. La roulade protège brièvement ; l’attaque lourde interrompt les ennemis ordinaires.
+Les préparations d’attaque sont signalées en ambre. La roulade protège brièvement ; l’attaque lourde interrompt les ennemis ordinaires et une roulade peut l’interrompre après le coup porté. La parade (clic droit) au début du geste renverse un assaillant de front ; la frappe suivante est une riposte fatale. Les projectiles, la charge et la frappe au sol du boss ne se parent pas. Une action pressée pendant un geste est mise en mémoire et part dès que le geste se termine.
 Se reposer restaure vie et fioles, réinitialise les ennemis ordinaires, et permet d’améliorer la vigueur ou le soin.
 Une mort laisse les fragments sur place. Mourir à nouveau avant de les récupérer remplace cette perte.
 

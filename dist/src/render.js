@@ -1,4 +1,4 @@
-import {WORLD,ROOMS,TILE,COLS,ROWS,SHRINE,TALISMAN,GATE,FOG,LOOT,clamp} from './core.js';
+import {WORLD,ROOMS,TILE,COLS,ROWS,SHRINE,TALISMAN,GATE,FOG,LOOT,clamp,PARRY_WINDOW} from './core.js';
 const palette={floor:'#293737',line:'#17292c',light:'#445250',gold:'#d1b77d'};
 const hash=(x,y)=>{let h=Math.imul(x+183,374761393)+Math.imul(y+527,668265263);h=Math.imul(h^(h>>>13),1274126177);return ((h^(h>>>16))>>>0)/4294967295;};
 function rect(c,x,y,w,h,col){c.fillStyle=col;c.fillRect(Math.floor(x),Math.floor(y),Math.ceil(w),Math.ceil(h));}
@@ -112,6 +112,7 @@ export class Renderer{
   const attack=p.action&&['light','heavy'].includes(p.action.kind);const wind=p.state==='windup';
   let swordAngle=face;
   if(attack){const a=p.action;swordAngle=a.face-1.4+clamp(a.time/(a.kind==='heavy'?.6:.33),0,1)*2.6;}
+  else if(p.action?.kind==='parry')swordAngle=face-2.0;
   else if(wind)swordAngle=face-1.6;
   else if(p.state==='recover'&&p.recover*(p.phase===2?.77:1)-p.timer<.25)swordAngle=face-1.1+(p.recover*(p.phase===2?.77:1)-p.timer)*9;
   else swordAngle=front?1.0:-.7;
@@ -179,6 +180,9 @@ export class Renderer{
   const a=s.player.action;if(a&&['light','heavy'].includes(a.kind)){
    const heavy=a.kind==='heavy',hit=heavy?.38:.14;
    if(a.time>hit-.04&&a.time<hit+.18){c.save();c.translate(s.player.x,s.player.y-13);c.strokeStyle=heavy?'#f5dabca0':'#dfe8d090';c.lineWidth=heavy?5:3;c.beginPath();c.arc(0,0,heavy?68:53,a.face-1.05,a.face+1.05);c.stroke();c.strokeStyle='#fff4ca';c.lineWidth=1;c.beginPath();c.arc(0,0,heavy?73:58,a.face-.7,a.face+.8);c.stroke();c.restore();}
+  }
+  if(a?.kind==='parry'&&a.time>=PARRY_WINDOW[0]&&a.time<=PARRY_WINDOW[1]){
+   c.save();c.translate(s.player.x,s.player.y-13);c.strokeStyle='#f2ead494';c.lineWidth=3;c.beginPath();c.arc(0,0,36,a.face-.95,a.face+.95);c.stroke();c.strokeStyle='#ffffff66';c.lineWidth=1;c.beginPath();c.arc(0,0,40,a.face-.7,a.face+.7);c.stroke();c.restore();
   }
   for(const b of s.projectiles){this.light(c,b.x,b.y,25,'#dda65b44');ellipse(c,b.x,b.y,5,5,'#edbc70');rect(c,b.x-2,b.y-2,3,3,'#fff0ba');}
   for(const f of s.effects){

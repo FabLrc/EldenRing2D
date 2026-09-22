@@ -18,3 +18,46 @@ test('sauvegarde malformée : valeurs invalides ignorées ou bornées',()=>{asse
 test('boss : deuxième phase, victoire et absence après rechargement',()=>{const s=createGame();const boss=s.enemies.find(e=>e.type==='boss');s.player.x=17*TILE;s.player.y=20*TILE;advance(s,.02);assert.equal(s.bossActive,true);hurtEnemy(s,boss,340);advance(s,.4);assert.equal(boss.phase,2);hurtEnemy(s,boss,999);assert.equal(s.progress.bossDefeated,true);assert.equal(s.bossActive,false);assert.equal(createGame(serialize(s)).enemies.find(e=>e.type==='boss').dead,true);});
 test('toutes les zones clés sont accessibles sans ouvrir le raccourci',()=>{const s=createGame();const start=[Math.floor(s.player.x/TILE),Math.floor(s.player.y/TILE)];const seen=new Set([start.join(',')]),queue=[start];for(let k=0;k<queue.length;k++){const[x,y]=queue[k];for(const[dx,dy]of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy,key=nx+','+ny;if(!seen.has(key)&&!blocked(s,nx*TILE+16,ny*TILE+16,10)){seen.add(key);queue.push([nx,ny]);}}}for(const[x,y]of [[35,49],[60,43],[44,25],[17,20],[75,15],[17,32]])assert.ok(seen.has(x+','+y),`inaccessible : ${x},${y}`);});
 test('un ennemi derrière une paroi ne voit pas le pèlerin',()=>{const s=createGame();assert.equal(clearSight(s,{x:24*TILE,y:40*TILE},{x:30*TILE,y:40*TILE}),false);});
+test('la parade est purement défensive : aucun dégât pendant le geste',()=>{
+ const s=createGame();s.player.x=37*TILE;s.player.y=50*TILE;s.player.face=0;
+ const e=makeEnemy('penitent',s.player.x+40,s.player.y,99);e.face=Math.PI;e.state='windup';e.timer=2;s.enemies=[e];
+ assert.equal(startAction(s,'parry'),true);
+ advance(s,.7); // toute la durée du geste, sans riposte
+ assert.equal(e.hp,65);assert.equal(e.flash,0);assert.equal(s.hitStop,0);
+ assert.equal(s.player.hp,s.player.maxHp);assert.equal(s.player.action,null);
+});
+test('la parade renverse un assaillant de front et la riposte est fatale',()=>{
+ const s=createGame();s.player.x=37*TILE;s.player.y=50*TILE;s.player.face=0;
+ const e=makeEnemy('penitent',s.player.x+40,s.player.y,99);e.face=Math.PI;e.state='windup';e.timer=2;s.enemies=[e];
+ assert.equal(startAction(s,'parry'),true);
+ advance(s,.1);assert.equal(hurtPlayer(s,19,e),'parry');
+ assert.equal(s.player.hp,s.player.maxHp);assert.equal(e.state,'stun');assert.ok(e.parried);
+ assert.equal(startAction(s,'light',{x:1}),true);advance(s,.4);
+ assert.equal(e.dead,true);assert.equal(s.player.souls,14);assert.equal(s.kills,1);
+});
+test('la parade rate hors de la fenêtre, et ne couvre ni projectile ni charge',()=>{
+ const s=createGame();s.player.x=37*TILE;s.player.y=50*TILE;
+ const e=makeEnemy('penitent',s.player.x+40,s.player.y,99);e.face=Math.PI;s.enemies=[e];
+ startAction(s,'parry');advance(s,.45);
+ assert.equal(hurtPlayer(s,19,e),true);assert.equal(s.player.hp,81);
+ s.player.invulnerable=0;
+ startAction(s,'parry');advance(s,.1);
+ assert.equal(hurtPlayer(s,17,{x:s.player.x+30,y:s.player.y},false),true);assert.equal(s.player.hp,64);
+ assert.equal(e.parried||false,false);
+});
+test('l’action pressée pendant un geste part à la fin du geste',()=>{
+ const s=createGame();s.enemies=[];
+ assert.equal(startAction(s,'light'),true);
+ assert.equal(startAction(s,'roll',{x:1}),false);
+ assert.equal(s.player.buffer.kind,'roll');
+ advance(s,.5);
+ assert.equal(s.player.action.kind,'roll');assert.equal(s.player.buffer,null);
+});
+test('la roulade interrompt la récupération d’une attaque, après le coup',()=>{
+ const s=createGame();s.enemies=[];
+ startAction(s,'light');advance(s,.31);
+ assert.equal(startAction(s,'roll',{x:-1}),true);
+ assert.equal(s.player.action.kind,'roll');
+ startAction(s,'heavy');advance(s,.2);
+ assert.equal(startAction(s,'roll'),false); // trop tôt : avant le coup porté
+});
