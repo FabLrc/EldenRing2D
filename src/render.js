@@ -1,12 +1,42 @@
 import {WORLD,ROOMS,TILE,COLS,ROWS,SHRINE,TALISMAN,GATE,FOG,LOOT,clamp,PARRY_WINDOW} from './core.js';
+import {Fx} from './fx.js';
 const palette={floor:'#293737',line:'#17292c',light:'#445250',gold:'#d1b77d'};
+// Ambiance : teinte du grade par zone et obscurité ambiante de la lightmap.
+const GRADES={
+ refuge:{tint:[1.05,1,.93],sat:1.02,con:1.03,vig:.48,amt:.12},
+ cour:{tint:[.95,1,1.07],sat:.98,con:1.05,vig:.46,amt:.15},
+ cloitre:{tint:[.93,.99,1.08],sat:.96,con:1.06,vig:.5,amt:.16},
+ galerie:{tint:[.96,1,1.05],sat:.97,con:1.05,vig:.47,amt:.14},
+ boss:{tint:[1.06,.98,.9],sat:1,con:1.08,vig:.55,amt:.16},
+ boss2:{tint:[1.12,.9,.84],sat:1.02,con:1.1,vig:.6,amt:.2},
+ crypte:{tint:[.93,1.06,.96],sat:.96,con:1.05,vig:.5,amt:.15},
+};
+const AMBIENT={
+ refuge:[146,140,132],cour:[118,130,145],cloitre:[112,126,142],
+ galerie:[110,120,135],boss:[132,118,112],crypte:[112,138,120],
+};
+// Particules d'ambiance : cendres, poussières, braises montantes et spores.
+const PARTICLES={
+ refuge:{n:34,dx:1.6,dy:1,c:['#c5d4be24','#dcc98e55']},
+ cour:{n:42,dx:2.4,dy:1,c:['#bdcfc422','#d4c89048']},
+ cloitre:{n:30,dx:1.2,dy:.5,c:['#a8c4d022','#c0d0d848']},
+ galerie:{n:32,dx:1.5,dy:.6,c:['#b4c8c022','#d0c8a048']},
+ boss:{n:52,dx:2.2,dy:7,up:1,c:['#e0a86040','#ffd89078']},
+ crypte:{n:44,dx:1.4,dy:.9,c:['#90d0a028','#bce8b858']},
+};
 const hash=(x,y)=>{let h=Math.imul(x+183,374761393)+Math.imul(y+527,668265263);h=Math.imul(h^(h>>>13),1274126177);return ((h^(h>>>16))>>>0)/4294967295;};
 function rect(c,x,y,w,h,col){c.fillStyle=col;c.fillRect(Math.floor(x),Math.floor(y),Math.ceil(w),Math.ceil(h));}
 function ellipse(c,x,y,rx,ry,col){c.fillStyle=col;c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fill();}
 function polygon(c,points,col){c.fillStyle=col;c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fill();}
 export class Renderer{
  constructor(canvas){
-  this.canvas=canvas;this.c=canvas.getContext('2d',{alpha:false});this.camera={x:SHRINE.x,y:SHRINE.y};this.zoom=1.45;
+  // Le canvas visible est réservé à Fx (WebGL, ou 2D en repli) ; la scène est peinte hors écran.
+  this.canvas=canvas;this.fx=new Fx(canvas);
+  this.scene=document.createElement('canvas');this.c=this.scene.getContext('2d',{alpha:false});
+  this.lightCv=document.createElement('canvas');this.lights=this.lightCv.getContext('2d');
+  this.lamps=[];this.grade={tint:[1.05,1,.93],sat:1.02,con:1.03,vig:.48,amt:.12};
+  this.camera={x:SHRINE.x,y:SHRINE.y};this.zoom=1.45;
+  this.scene.width=this.lightCv.width=canvas.width;this.scene.height=this.lightCv.height=canvas.height;
   this.tiles=new Image();this.tiles.src=new URL('../assets/vendor/stealthix/tileset_dungeon.png',import.meta.url).href;
   this.heroIdle=new Image();this.heroIdle.src=new URL('../assets/generated/ash-bell-pilgrim-idle-breath-v1.png',import.meta.url).href;
   this.heroRunContact=new Image();this.heroRunContact.src=new URL('../assets/generated/ash-bell-pilgrim-run-contact-v1.png',import.meta.url).href;
@@ -18,7 +48,13 @@ export class Renderer{
   this.terrain=document.createElement('canvas');this.terrain.width=COLS*TILE;this.terrain.height=ROWS*TILE;
   this.drawTerrain();this.tiles.onload=()=>this.drawTerrain();
  }
- resize(){const ratio=window.innerWidth/window.innerHeight;this.canvas.height=600;this.canvas.width=Math.round(600*ratio);this.c.imageSmoothingEnabled=false;}
+ resize(){
+  const ratio=window.innerWidth/window.innerHeight;
+  this.canvas.height=600;this.canvas.width=Math.round(600*ratio);
+  this.scene.width=this.lightCv.width=this.canvas.width;
+  this.scene.height=this.lightCv.height=this.canvas.height;
+  this.c.imageSmoothingEnabled=false;
+ }
  drawTerrain(){
   const c=this.terrain.getContext('2d');c.imageSmoothingEnabled=false;rect(c,0,0,this.terrain.width,this.terrain.height,'#111e24');
   for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
@@ -61,7 +97,38 @@ export class Renderer{
   }
  }
  toWorld(clientX,clientY){const r=this.canvas.getBoundingClientRect();return {x:(clientX-r.left)*this.canvas.width/r.width/this.zoom+this.camera.x-this.canvas.width/this.zoom/2,y:(clientY-r.top)*this.canvas.height/r.height/this.zoom+this.camera.y-this.canvas.height/this.zoom/2};}
- light(c,x,y,r,color){const g=c.createRadialGradient(x,y,1,x,y,r);g.addColorStop(0,color);g.addColorStop(1,'transparent');c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2);}
+ light(c,x,y,r,color){
+  // Halo peint sur la scène + source enregistrée pour la lightmap multiply.
+  this.lamps.push({x,y,r:r*1.15,color,i:.72});
+  const g=c.createRadialGradient(x,y,1,x,y,r);g.addColorStop(0,color);g.addColorStop(1,'transparent');c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2);
+ }
+ lampColor(color,a){
+  const h=color.replace('#','');
+  return `rgba(${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)},${Math.min(1,a)})`;
+ }
+ ambient(s,reduced){
+  const base=AMBIENT[s.area]||AMBIENT.cour;let[r,g,b]=base;
+  if(s.area==='boss'){const boss=s.enemies.find(e=>e.type==='boss');if(boss&&boss.phase===2&&!boss.dead){r=Math.min(255,r*1.18);g*=.82;b*=.78;}}
+  if(reduced){r=Math.min(255,r+22);g=Math.min(255,g+22);b=Math.min(255,b+22);}
+  return `rgb(${r|0},${g|0},${b|0})`;
+ }
+ // Lightmap : ambiance de zone puis sources additively, alignée sur la caméra de la scène.
+ paintLights(s,t,w,h,reduced,sx,sy){
+  const l=this.lights;
+  l.setTransform(1,0,0,1,0,0);l.globalCompositeOperation='source-over';l.globalAlpha=1;
+  l.fillStyle=this.ambient(s,reduced);l.fillRect(0,0,w,h);
+  l.globalCompositeOperation='lighter';
+  l.save();l.translate(sx,sy);l.scale(this.zoom,this.zoom);
+  for(const m of this.lamps){
+   const a=(m.i??.72)*(reduced?1:.92+.08*Math.sin(t*13+m.x*.11));
+   const g=l.createRadialGradient(m.x,m.y,0,m.x,m.y,m.r);
+   g.addColorStop(0,this.lampColor(m.color,a));
+   g.addColorStop(.4,this.lampColor(m.color,a*.45));
+   g.addColorStop(1,'rgba(0,0,0,0)');
+   l.fillStyle=g;l.fillRect(m.x-m.r,m.y-m.r,m.r*2,m.r*2);
+  }
+  l.restore();l.globalCompositeOperation='source-over';
+ }
  column(c,o,t){
   const{x,y}=o;ellipse(c,x+10,y+4,24,10,'#07131880');
   rect(c,x-19,y-5,38,10,'#27383b');rect(c,x-21,y-10,42,7,'#5b635c');rect(c,x-14,y-61,28,51,'#3d4c4a');rect(c,x-10,y-59,4,44,'#737866');rect(c,x+8,y-57,5,45,'#2c3c3c');
@@ -203,14 +270,17 @@ export class Renderer{
  }
  draw(s,dt,title=false,reduced=false){
   const c=this.c,w=this.canvas.width,h=this.canvas.height,t=s.time;
+  this.lamps.length=0;
   this.zoom=title?1.05:1.3;
   const target=title?{x:SHRINE.x-90,y:SHRINE.y-38}:{x:s.player.x,y:s.player.y-24};
   if(!title&&s.bossActive){const boss=s.enemies.find(e=>e.type==='boss');target.x+=clamp((boss.x-s.player.x)*.32,-100,100);target.y+=clamp((boss.y-s.player.y)*.32,-90,90);}
   if(title){this.camera.x=target.x;this.camera.y=target.y;}
   else {this.camera.x+=(target.x-this.camera.x)*Math.min(1,dt*7);this.camera.y+=(target.y-this.camera.y)*Math.min(1,dt*7);}
   rect(c,0,0,w,h,'#132127');c.save();
-  const shake=reduced?0:s.shake;
-  c.translate(Math.round(w/2-this.camera.x*this.zoom+Math.sin(t*71)*shake),Math.round(h/2-this.camera.y*this.zoom+Math.cos(t*63)*shake));c.scale(this.zoom,this.zoom);c.imageSmoothingEnabled=false;
+  const shake=reduced?0:Math.pow(s.shake,1.12)*1.1;
+  const sx=Math.round(w/2-this.camera.x*this.zoom+Math.sin(t*71)*shake);
+  const sy=Math.round(h/2-this.camera.y*this.zoom+Math.cos(t*63)*shake);
+  c.translate(sx,sy);c.scale(this.zoom,this.zoom);c.imageSmoothingEnabled=false;
   const left=this.camera.x-w/this.zoom/2,top=this.camera.y-h/this.zoom/2;
   c.drawImage(this.terrain,0,0);
   // Bougies de guidage le long du chemin principal.
@@ -219,6 +289,12 @@ export class Renderer{
   }
   // Les attaques sont affichées au sol, sous les acteurs.
   for(const e of s.enemies)if(!e.dead)this.telegraph(c,e,t);
+  // Sources propres à l’état du monde : aura du pèlerin, brouillard de l’arène, phase 2.
+  if(!s.dead)this.lamps.push({x:s.player.x,y:s.player.y-15,r:100,color:'#ffe2b0',i:.5});
+  if(s.bossActive){const boss=s.enemies.find(e=>e.type==='boss');if(boss&&!boss.dead){
+   this.lamps.push({x:FOG.x+FOG.w/2,y:FOG.y+FOG.h/2,r:85,color:'#e8d9a0',i:.32});
+   if(boss.phase===2)this.lamps.push({x:boss.x,y:boss.y-30,r:155,color:'#ff8a50',i:.5+.18*Math.sin(t*6)});
+  }}
   const drawables=WORLD.obstacles.map(o=>({y:o.y,draw:()=>{if(o.type==='tomb')this.tomb(c,o);else this.column(c,o,t);}}));
   const trees=[[7,43,1.2,false],[23,43,1.3,true],[22,56,1.1,false],[7,56,.8,false],[30,53,.7,false],[46,40,.8,false],[68,13,.9,false],[79,22,1.1,false],[10,36,1,false],[23,32,1,false],[30,9,.9,false],[4,24,1.2,false],[71,9,1,false]];
   for(const [x,y,k,g]of trees)drawables.push({y:y*TILE,draw:()=>{c.globalAlpha=s.player.y<y*TILE&&Math.abs(s.player.x-x*TILE)<65&&y*TILE-s.player.y<150?.35:1;this.tree(c,x*TILE,y*TILE,k,g);c.globalAlpha=1;}});
@@ -244,18 +320,25 @@ export class Renderer{
   for(let i=0;i<LOOT.length;i++)if(!s.progress.collected.includes(i))this.spark(c,LOOT[i],t,'#d5b77b');
   if(s.drop)this.spark(c,s.drop,t,'#bcdf9b');
   if(!s.progress.talisman){this.light(c,TALISMAN.x,TALISMAN.y-10,60,'#b9d99c25');this.spark(c,TALISMAN,t,'#c8e6b4');}
-  const a=s.player.action;if(a&&['light','heavy'].includes(a.kind)){
-   const heavy=a.kind==='heavy',hit=heavy?.38:.14;
-   if(a.time>hit-.04&&a.time<hit+.18){c.save();c.translate(s.player.x,s.player.y-13);c.strokeStyle=heavy?'#f5dabca0':'#dfe8d090';c.lineWidth=heavy?5:3;c.beginPath();c.arc(0,0,heavy?68:53,a.face-1.05,a.face+1.05);c.stroke();c.strokeStyle='#fff4ca';c.lineWidth=1;c.beginPath();c.arc(0,0,heavy?73:58,a.face-.7,a.face+.8);c.stroke();c.restore();}
-  }
+   const a=s.player.action;if(a&&['light','heavy'].includes(a.kind)){
+    const heavy=a.kind==='heavy',hit=heavy?.38:.14;
+    if(a.time>hit-.04&&a.time<hit+.18){c.save();c.translate(s.player.x,s.player.y-13);
+     // Traînée : trois arcs fantômes derrière la lame en mouvement.
+     if(!reduced){const sweep=a.face-1.4+clamp(a.time/(heavy?.6:.33),0,1)*2.6;
+      c.strokeStyle=heavy?'#f5dabc':'#dfe8d0';c.lineWidth=heavy?4:2.5;
+      for(let k=3;k>=1;k--){const ang=sweep-k*.3;c.globalAlpha=.45/k;c.beginPath();c.arc(0,0,(heavy?68:53)+k*3,ang-.8,ang+.5);c.stroke();}
+      c.globalAlpha=1;}
+     c.strokeStyle=heavy?'#f5dabca0':'#dfe8d090';c.lineWidth=heavy?5:3;c.beginPath();c.arc(0,0,heavy?68:53,a.face-1.05,a.face+1.05);c.stroke();c.strokeStyle='#fff4ca';c.lineWidth=1;c.beginPath();c.arc(0,0,heavy?73:58,a.face-.7,a.face+.8);c.stroke();c.restore();}
+   }
   if(a?.kind==='parry'&&a.time>=PARRY_WINDOW[0]&&a.time<=PARRY_WINDOW[1]){
    c.save();c.translate(s.player.x,s.player.y-13);c.strokeStyle='#f2ead494';c.lineWidth=3;c.beginPath();c.arc(0,0,36,a.face-.95,a.face+.95);c.stroke();c.strokeStyle='#ffffff66';c.lineWidth=1;c.beginPath();c.arc(0,0,40,a.face-.7,a.face+.7);c.stroke();c.restore();
   }
   for(const b of s.projectiles){this.light(c,b.x,b.y,25,'#dda65b44');ellipse(c,b.x,b.y,5,5,'#edbc70');rect(c,b.x-2,b.y-2,3,3,'#fff0ba');}
   for(const f of s.effects){
    const life=clamp(f.life/f.maxLife,0,1);c.globalAlpha=life;
-   if(f.impact){
-    const expansion=1-life;c.save();c.translate(f.x,f.y);c.rotate(f.angle);
+    if(f.impact){
+     this.lamps.push({x:f.x,y:f.y,r:50*life+18,color:'#ffe9c0',i:.75*life});
+     const expansion=1-life;c.save();c.translate(f.x,f.y);c.rotate(f.angle);
     c.strokeStyle=f.color;c.lineWidth=f.heavy?3:2;
     const rays=f.heavy?9:6,reach=(f.heavy?43:28)*expansion+8;
     for(let i=0;i<rays;i++){c.rotate(Math.PI*2/rays);c.beginPath();c.moveTo(5,0);c.lineTo(reach,0);c.stroke();}
@@ -263,11 +346,36 @@ export class Renderer{
    }else if(f.ring){c.strokeStyle=f.color;c.lineWidth=4;c.beginPath();c.arc(f.x,f.y,f.radius*(1-life),0,Math.PI*2);c.stroke();}
    else rect(c,f.x,f.y,f.size,f.size,f.color);
   }c.globalAlpha=1;
-  // Particules de cendre et nappes de brume ; désactivées en mouvement réduit.
-  if(!reduced){for(let i=0;i<48;i++){const x=left+((hash(i,94)*w/this.zoom+t*(2+i%3))%(w/this.zoom)),y=top+((hash(i,45)*h/this.zoom+t*(i%2?1:-1)+h/this.zoom)%(h/this.zoom));rect(c,x,y,1+(i%3===0),1,i%4?'#bed1bd24':'#dbca8e65');}}
-  c.restore();
-  const fog=c.createLinearGradient(0,0,0,h);fog.addColorStop(0,'#8ba49d0a');fog.addColorStop(.5,'#a5bca006');fog.addColorStop(1,'#03131d32');c.fillStyle=fog;c.fillRect(0,0,w,h);
- }
+   // Particules d’ambiance par zone ; désactivées en mouvement réduit.
+   if(!reduced){
+    const P=PARTICLES[s.area]||PARTICLES.cour,vw=w/this.zoom,vh=h/this.zoom,wrap=(v,n)=>((v%n)+n)%n;
+    for(let i=0;i<P.n;i++){
+     const x=left+wrap(hash(i,94)*vw+t*P.dx*(2+i%3),vw);
+     const y=P.up?top+wrap(hash(i,45)*vh-t*P.dy*(.5+hash(i,7)),vh):top+wrap(hash(i,45)*vh+t*(i%2?1:-1)*P.dy,vh);
+     rect(c,x,y,1+(i%3===0),1,i%4?P.c[0]:P.c[1]);
+    }
+   }
+   c.restore();
+   const fog=c.createLinearGradient(0,0,0,h);fog.addColorStop(0,'#8ba49d0a');fog.addColorStop(.5,'#a5bca006');fog.addColorStop(1,'#03131d32');c.fillStyle=fog;c.fillRect(0,0,w,h);
+   // Lightmap alignée sur la caméra, grade de zone interpolé, puis post-traitement WebGL.
+   this.paintLights(s,t,w,h,reduced,sx,sy);
+   const boss=s.enemies.find(e=>e.type==='boss');
+   const tgt=GRADES[s.area]||GRADES.refuge;
+   const gradeTarget=s.area==='boss'&&boss&&!boss.dead&&boss.phase===2?GRADES.boss2:tgt;
+   const k=Math.min(1,dt*2.5);
+   this.grade.tint=this.grade.tint.map((v,i)=>v+(gradeTarget.tint[i]-v)*k);
+   for(const key of ['sat','con','vig','amt'])this.grade[key]+=(gradeTarget[key]-this.grade[key])*k;
+   const red=reduced?0:clamp(s.player.flash*1.65,0,.33);
+   const white=reduced?0:clamp(s.hitStop*2.5,0,.28);
+   const flashAmt=Math.max(red,white);
+   const g=this.grade;
+   this.fx.present(this.scene,this.lightCv,{
+    tint:g.tint,amt:g.amt,sat:g.sat,con:g.con,vig:g.vig,
+    grain:reduced?0:.045,bloom:reduced?.3:.55,
+    flashCol:white>=red?[1,1,1]:[1,.4,.3],flashAmt,
+    aber:reduced?0:.0008+flashAmt*.015,time:t,
+   });
+  }
  spark(c,p,t,color){const y=p.y-8+Math.sin(t*3+p.x)*3;this.light(c,p.x,y,24,color+'22');polygon(c,[[p.x,y-7],[p.x+4,y],[p.x,y+7],[p.x-4,y]],color);}
  drawMap(canvas,s){
   const c=canvas.getContext('2d'),scale=6.1,ox=33,oy=15;rect(c,0,0,canvas.width,canvas.height,'#142125');

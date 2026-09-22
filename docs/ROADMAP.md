@@ -13,7 +13,7 @@ PixelLab reste optionnel, uniquement après un essai du prototype.
 | 3. Exploration et mort | Implémenté : six zones, refuge, perte/récupération, raccourci et sauvegarde | Orientation et rythme en essai humain |
 | 4. Rencontres et progression | Implémenté : trois archétypes, butin, deux améliorations, talisman | Difficulté et économie à ajuster |
 | 5. Boss et parcours complet | Implémenté : trois attaques, deux phases et conclusion | Duel complet sans outils de diagnostic à tester humainement |
-| 6. Direction artistique | Base provisoire cohérente et assets CC0 intégrés | Sprites animés définitifs, animations d’impact, variété du décor, ambiance sonore |
+| 6. Direction artistique | Lumières dynamiques (lightmap), shaders WebGL (bloom, grade de zone, grain, vignette, flash), particules d’ambiance par zone, traînée d’épée ; assets CC0 intégrés | Sprites animés définitifs, variété du décor, ambiance sonore, réglage fin des teintes en essai humain |
 | 7. Livraison | Tests de simulation et navigateur, export statique | Playtests, compatibilité, performances sur matériel modeste, publication si demandée |
 
 ## Prochaine séance de test

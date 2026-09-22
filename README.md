@@ -1,7 +1,7 @@
 # La Cloche des Cendres
 
 Première démo jouable d’un jeu d’action et d’exploration en 2D, vue de dessus en trois quarts.
-JavaScript natif, Canvas 2D et audio local. Aucun backend, compte, service distant ou dépendance npm à installer.
+JavaScript natif, Canvas 2D pour la scène, post-traitement WebGL (lumières, bloom, grade) et audio local. Aucun backend, compte, service distant ou dépendance npm à installer.
 
 ## Jouer en local
 
@@ -86,7 +86,7 @@ Il teste les entrées clavier/souris, menus, sauvegarde, combat, mort, victoire,
 
 - Six espaces connectés, trois archétypes d’ennemis, boss à deux phases, refuge, raccourci et détour récompensé.
 - Sprites originaux du pèlerin en pixel art HD-2D, décors procéduraux, débris CC0 Stealthix et sons CC0 Kenney. Sources et licences dans `CREDITS.md`.
-- Interface française, contrôles manette standard, réglages du son et réduction des effets.
+- Interface française, contrôles manette standard, réglages du son et réduction des effets (grain, flash, particules, secousses).
 - Cible : ordinateur. Pas de commandes tactiles.
 - Le ressenti, les animations finales, la durée de 15–25 minutes et l’équilibrage doivent encore être validés par des essais humains.
 - Chrome a été testé automatiquement. Safari, Firefox et une manette physique restent à vérifier.
@@ -95,7 +95,8 @@ Il teste les entrées clavier/souris, menus, sauvegarde, combat, mort, victoire,
 ## Organisation
 
 - `src/core.js` : simulation, monde, combats et progression ; indépendante du DOM.
-- `src/render.js` : terrain précalculé, sprites du pèlerin, caméra et carte.
+- `src/render.js` : terrain précalculé, sprites du pèlerin, lumières, particules de zone, caméra et carte.
+- `src/fx.js` : pipeline WebGL — lumière multiply, bloom, grade, grain, vignette, flash (repli Canvas 2D sans WebGL).
 - `src/main.js` : boucle, interface, commandes, audio et sauvegarde.
 - `assets/` : ressources livrées avec le jeu et licences.
 - `docs/ROADMAP.md` : jalons et travail restant.
