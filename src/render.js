@@ -12,6 +12,9 @@ export class Renderer{
   this.heroRunContact=new Image();this.heroRunContact.src=new URL('../assets/generated/ash-bell-pilgrim-run-contact-v1.png',import.meta.url).href;
   this.heroRunPassing=new Image();this.heroRunPassing.src=new URL('../assets/generated/ash-bell-pilgrim-run-passing-v1.png',import.meta.url).href;
   this.heroBackpedal=new Image();this.heroBackpedal.src=new URL('../assets/generated/ash-bell-pilgrim-backpedal-v1.png',import.meta.url).href;
+  this.heroLight=new Image();this.heroLight.src=new URL('../assets/generated/ash-bell-pilgrim-light-v1.png',import.meta.url).href;
+  this.heroHeavy=new Image();this.heroHeavy.src=new URL('../assets/generated/ash-bell-pilgrim-heavy-v1.png',import.meta.url).href;
+  this.heroPotion=new Image();this.heroPotion.src=new URL('../assets/generated/ash-bell-pilgrim-potion-v1.png',import.meta.url).href;
   this.terrain=document.createElement('canvas');this.terrain.width=COLS*TILE;this.terrain.height=ROWS*TILE;
   this.drawTerrain();this.tiles.onload=()=>this.drawTerrain();
  }
@@ -91,8 +94,23 @@ export class Renderer{
   for(let i=0;i<14;i++){const yy=(t*18+i*8)%110;rect(c,x+Math.sin(i*1.8+yy*.03)*25,y-18-yy,1+(i%2),2,i%2?'#d6bb75':'#ffdc9b');}
  }
  heroSprite(c,p,t){
-  if(p.action||![this.heroIdle,this.heroRunContact,this.heroRunPassing,this.heroBackpedal].every(image=>image.complete&&image.naturalWidth))return false;
-  const moving=p.moving,sector=(Math.round(p.face/(Math.PI/4))+8)%8;
+  const action=p.action?.kind,face=p.action?.face??p.face,sector=(Math.round(face/(Math.PI/4))+8)%8;
+  const cardinalRow=()=>{
+   if(sector===2)return 0;
+   if(sector===6)return 1;
+   return [3,4,5].includes(sector)?3:2;
+  };
+  if(['light','heavy','heal'].includes(action)){
+   const image=action==='light'?this.heroLight:action==='heavy'?this.heroHeavy:this.heroPotion;
+   if(!image.complete||!image.naturalWidth)return false;
+   const time=p.action.time,frame=action==='light'?Number(time>=.13):action==='heavy'?Number(time>=.37):Number(time>=.78);
+   const sw=image.naturalWidth/2,sh=image.naturalHeight/4,sx=frame*sw,sy=cardinalRow()*sh;
+   const style=action==='heavy'?{x:-68,y:-75,w:136,h:78,offset:frame?-4:-7}:action==='light'?{x:-50,y:-59,w:100,h:64,offset:frame?5:-3}:{x:-40,y:-58,w:80,h:60,offset:frame?8:-12};
+   c.save();c.translate(Math.round(p.x),Math.round(p.y));ellipse(c,0,2,15,5,'#061217aa');c.translate(style.offset,0);
+   c.drawImage(image,sx,sy,sw,sh,style.x,style.y,style.w,style.h);c.restore();return true;
+  }
+  if(action||![this.heroIdle,this.heroRunContact,this.heroRunPassing,this.heroBackpedal].every(image=>image.complete&&image.naturalWidth))return false;
+  const moving=p.moving;
   let image=this.heroIdle,sx=0,sy=0,sw,sh,flip=false,xOffset=0,drawY=-55,drawH=60,bob=0;
   const useRow=(sheet,row)=>{
    const unit=sheet.naturalHeight/4;
@@ -102,11 +120,12 @@ export class Renderer{
    const rows=[0,1,2,3].map(i=>({y:i*unit,h:unit,dy:anchors[i],dh:60}));
    const r=rows[row];sy=r.y;sh=r.h;drawY=r.dy;drawH=r.dh;
   };
-  const faceRow=()=>{
-   if([5,6,7].includes(sector))return 1;
+  const moveRow=()=>{
    if(sector===2)return 0;
-   if(sector===1||sector===3){flip=sector===3;return 3;}
-   flip=sector===4;return 2;
+   if(sector===6)return 1;
+   // Les diagonales ne possèdent plus d’animation propre : elles rejoignent
+   // la direction cardinale la plus proche. Le profil droit est retourné à gauche.
+   flip=[3,4,5].includes(sector);return 2;
   };
   if(moving){
    // A → B → C → D : appuis et passages alternent à une cadence de course.
@@ -116,15 +135,15 @@ export class Renderer{
    if(backpedal){
     const frame=Math.floor(p.walk/(Math.PI/1.55))&1;
     image=this.heroBackpedal;sw=image.naturalWidth/2;sx=frame*sw;
-    useRow(image,faceRow());xOffset=frame?8:-4;bob=frame?-.8:0;if(flip)xOffset=-xOffset;
+    useRow(image,moveRow());xOffset=frame?8:-4;bob=frame?-.8:0;if(flip)xOffset=-xOffset;
    }else{
     const frame=Math.floor(p.walk/(Math.PI/1.8))%4,col=frame>1?1:0;
     image=frame%2?this.heroRunPassing:this.heroRunContact;sw=image.naturalWidth/2;sx=col*sw;
-    useRow(image,faceRow());xOffset=col?7:-5;bob=[0,-2.5,-4,-2.5][frame];if(flip)xOffset=-xOffset;
+    useRow(image,moveRow());xOffset=col?7:-5;bob=[0,-2.5,-4,-2.5][frame];if(flip)xOffset=-xOffset;
    }
   }else{
    const frame=Math.floor(t/.62)&1;
-   sw=image.naturalWidth/2;sx=frame*sw;useRow(image,faceRow());xOffset=frame?9:-10;bob=frame?-.8:0;if(flip)xOffset=-xOffset;
+   sw=image.naturalWidth/2;sx=frame*sw;useRow(image,moveRow());xOffset=frame?9:-10;bob=frame?-.8:0;if(flip)xOffset=-xOffset;
   }
   c.save();c.translate(Math.round(p.x),Math.round(p.y));
   ellipse(c,0,2,15,5,'#061217aa');
