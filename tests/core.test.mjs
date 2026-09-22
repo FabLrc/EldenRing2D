@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createGame,update,startAction,hurtPlayer,hurtEnemy,respawn,interact,upgrade,serialize,sanitizeSave,blocked,move,makeEnemy,WORLD,TILE,SHRINE,GATE,TALISMAN,FOG,clearSight} from '../src/core.js';
+import {createGame,update,startAction,hurtPlayer,hurtEnemy,respawn,interact,upgrade,serialize,sanitizeSave,blocked,move,makeEnemy,enterVeille,WORLD,TILE,SHRINE,GATE,TALISMAN,FOG,clearSight} from '../src/core.js';
 const advance=(s,seconds,input={})=>{for(let t=0;t<seconds;t+=.02)update(s,input,.02);};
 test('les diagonales ne donnent pas de vitesse supplémentaire',()=>{const a=createGame(),b=createGame();a.enemies=[];b.enemies=[];const ax=a.player.x,ay=a.player.y;advance(a,.25,{x:1});advance(b,.25,{x:1,y:1});assert.ok(Math.abs(Math.hypot(a.player.x-ax,a.player.y-ay)-Math.hypot(b.player.x-ax,b.player.y-ay))<.01);});
 test('un déplacement rapide ne traverse pas les murs',()=>{const s=createGame();s.player.x=6*TILE;s.player.y=49*TILE;move(s,s.player,-600,0);assert.ok(s.player.x>5*TILE);assert.equal(blocked(s,s.player.x,s.player.y),false);});
@@ -18,6 +18,34 @@ test('sauvegarde malformée : valeurs invalides ignorées ou bornées',()=>{asse
 test('boss : deuxième phase, victoire et absence après rechargement',()=>{const s=createGame();const boss=s.enemies.find(e=>e.type==='boss');s.player.x=17*TILE;s.player.y=20*TILE;advance(s,.02);assert.equal(s.bossActive,true);hurtEnemy(s,boss,340);advance(s,.4);assert.equal(boss.phase,2);hurtEnemy(s,boss,999);assert.equal(s.progress.bossDefeated,true);assert.equal(s.bossActive,false);assert.equal(createGame(serialize(s)).enemies.find(e=>e.type==='boss').dead,true);});
 test('toutes les zones clés sont accessibles sans ouvrir le raccourci',()=>{const s=createGame();const start=[Math.floor(s.player.x/TILE),Math.floor(s.player.y/TILE)];const seen=new Set([start.join(',')]),queue=[start];for(let k=0;k<queue.length;k++){const[x,y]=queue[k];for(const[dx,dy]of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy,key=nx+','+ny;if(!seen.has(key)&&!blocked(s,nx*TILE+16,ny*TILE+16,10)){seen.add(key);queue.push([nx,ny]);}}}for(const[x,y]of [[35,49],[60,43],[44,25],[17,20],[75,15],[17,32]])assert.ok(seen.has(x+','+y),`inaccessible : ${x},${y}`);});
 test('un ennemi derrière une paroi ne voit pas le pèlerin',()=>{const s=createGame();assert.equal(clearSight(s,{x:24*TILE,y:40*TILE},{x:30*TILE,y:40*TILE}),false);});
+test('la veille : monde durci, fiole de plus, cycle sauvegardé',()=>{
+ const s=createGame({version:1,cycle:1,souls:50,vigor:3});
+ assert.equal(s.player.flasks,4);
+ const e=s.enemies.find(x=>x.type==='penitent');
+ assert.equal(e.maxHp,91);assert.equal(e.damage,27);
+ const boss=s.enemies.find(x=>x.type==='boss');
+ assert.equal(boss.maxHp,910);assert.equal(boss.damage,39);
+ interact(s);assert.equal(s.player.flasks,4);
+ const loaded=createGame(serialize(s));
+ assert.equal(loaded.progress.cycle,1);assert.equal(loaded.player.flasks,4);assert.equal(loaded.player.maxHp,160);
+ assert.equal(sanitizeSave({version:1,cycle:9}).cycle,3);
+ assert.equal(sanitizeSave({version:1}).cycle,0);
+});
+test('la veille s’ouvre après la victoire et relève le serment du cycle',()=>{
+ const s=createGame();
+ assert.equal(enterVeille(s),false);
+ const boss=s.enemies.find(x=>x.type==='boss');s.player.x=17*TILE;s.player.y=20*TILE;s.bossActive=true;
+ hurtEnemy(s,boss,999);
+ assert.equal(s.progress.bossDefeated,true);
+ assert.equal(enterVeille(s),true);
+ assert.equal(s.progress.cycle,1);assert.equal(s.progress.bossDefeated,false);
+ assert.equal(s.enemies.find(x=>x.type==='boss').dead,false);
+ assert.equal(s.enemies.find(x=>x.type==='boss').maxHp,910); // durci, re-vivable
+ s.player.x=17*TILE;s.player.y=20*TILE;s.player.invulnerable=0;advance(s,.06); // le hitstop du coup fatal pass
+ assert.equal(s.bossActive,true);
+ hurtEnemy(s,s.enemies.find(x=>x.type==='boss'),910); // le cycle 2 peut être achevé
+ assert.equal(s.progress.bossDefeated,true);
+});
 test('la parade est purement défensive : aucun dégât pendant le geste',()=>{
  const s=createGame();s.player.x=37*TILE;s.player.y=50*TILE;s.player.face=0;
  const e=makeEnemy('penitent',s.player.x+40,s.player.y,99);e.face=Math.PI;e.state='windup';e.timer=2;s.enemies=[e];

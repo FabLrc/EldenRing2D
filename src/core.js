@@ -33,24 +33,27 @@ export function buildWorld(){
 export const WORLD=buildWorld();
 export function sanitizeSave(raw){
  if(!raw||raw.version!==1)return null;
- const int=(n,max)=>Number.isFinite(n)?clamp(Math.floor(n),0,max):0;
- const drop=raw.drop&&Number.isFinite(raw.drop.x)&&Number.isFinite(raw.drop.y)&&raw.drop.x>=0&&raw.drop.y>=0&&raw.drop.x<COLS*TILE&&raw.drop.y<ROWS*TILE?{x:raw.drop.x,y:raw.drop.y,amount:int(raw.drop.amount,99999)}:null;
- return {version:1,souls:int(raw.souls,99999),vigor:int(raw.vigor,3),healing:int(raw.healing,3),talisman:raw.talisman===true,shortcut:raw.shortcut===true,bossDefeated:raw.bossDefeated===true,drop,deaths:int(raw.deaths,99999),collected:Array.isArray(raw.collected)?raw.collected.filter(x=>Number.isInteger(x)&&x>=0&&x<5):[]};
+ const int=(n,max)=>Number.isFinite(n)?clamp(Math.floor(n),0,max):0; const drop=raw.drop&&Number.isFinite(raw.drop.x)&&Number.isFinite(raw.drop.y)&&raw.drop.x>=0&&raw.drop.y>=0&&raw.drop.x<COLS*TILE&&raw.drop.y<ROWS*TILE?{x:raw.drop.x,y:raw.drop.y,amount:int(raw.drop.amount,99999)}:null;
+ return {version:1,souls:int(raw.souls,99999),vigor:int(raw.vigor,3),healing:int(raw.healing,3),talisman:raw.talisman===true,shortcut:raw.shortcut===true,bossDefeated:raw.bossDefeated===true,drop,deaths:int(raw.deaths,99999),cycle:int(raw.cycle,3),collected:Array.isArray(raw.collected)?raw.collected.filter(x=>Number.isInteger(x)&&x>=0&&x<5):[]};
 }
 export function serialize(s){return {version:1,...s.progress,souls:s.player.souls,drop:s.drop};}
 const ENEMY_TYPES={penitent:{hp:65,speed:48,reach:58,damage:19,wind:.85,recover:1.15,reward:14},watcher:{hp:88,speed:42,reach:100,damage:23,wind:.95,recover:1.1,reward:20},bell:{hp:55,speed:25,reach:240,damage:17,wind:1.15,recover:1.7,reward:18},boss:{hp:650,speed:45,reach:100,damage:28,wind:1.0,recover:1.15,reward:180}};
 export function makeEnemy(type,x,y,id){const t=ENEMY_TYPES[type];return {...t,type,x,y,homeX:x,homeY:y,id,maxHp:t.hp,r:type==='boss'?23:12,face:Math.PI/2,state:'idle',timer:0,flash:0,hitReact:0,hitReactMax:0,kickX:0,kickY:0,kickAngle:0,phase:1,cycle:0,dead:false,attackKind:'sweep'};}
-export function spawnEnemies(){return [
- ['penitent',35,49],['penitent',43,44],['watcher',44,51],
- ['penitent',57,48],['watcher',62,37],['bell',65,32],
- ['watcher',44,25],['penitent',38,20],['bell',48,17],
- ['penitent',73,20],['watcher',77,14],['boss',17,14]
- ].map(([t,x,y],i)=>makeEnemy(t,x*TILE,y*TILE,i));}
+export function spawnEnemies(cycle=0){
+ // La veille durcit le monde : PV et dégâts ×1,4 par cycle, le reste inchangé.
+ const m=Math.pow(1.4,cycle);
+ return [
+  ['penitent',35,49],['penitent',43,44],['watcher',44,51],
+  ['penitent',57,48],['watcher',62,37],['bell',65,32],
+  ['watcher',44,25],['penitent',38,20],['bell',48,17],
+  ['penitent',73,20],['watcher',77,14],['boss',17,14]
+  ].map(([t,x,y],i)=>{const e=makeEnemy(t,x*TILE,y*TILE,i);if(m>1){e.hp=e.maxHp=Math.round(e.hp*m);e.damage=Math.round(e.damage*m);}return e;});
+}
 export function createGame(save){
- const v=sanitizeSave(save)||{souls:0,vigor:0,healing:0,talisman:false,shortcut:false,bossDefeated:false,drop:null,deaths:0,collected:[]};
- const progress={vigor:v.vigor,healing:v.healing,talisman:v.talisman,shortcut:v.shortcut,bossDefeated:v.bossDefeated,deaths:v.deaths,collected:v.collected};
- const p={x:SHRINE.x,y:SHRINE.y+62,r:10,face:-Math.PI/2,hp:100+v.vigor*20,maxHp:100+v.vigor*20,stamina:100,souls:v.souls,flasks:3,action:null,invulnerable:0,regenDelay:0,flash:0,walk:0,moving:false};
- const s={player:p,progress,enemies:spawnEnemies(),drop:v.drop,effects:[],projectiles:[],events:[],time:0,dead:false,deathTimer:0,bossActive:false,shake:0,hitStop:0,area:'refuge',visits:new Set(['refuge']),kills:0};
+ const v=sanitizeSave(save)||{souls:0,vigor:0,healing:0,talisman:false,shortcut:false,bossDefeated:false,drop:null,deaths:0,cycle:0,collected:[]};
+ const progress={vigor:v.vigor,healing:v.healing,talisman:v.talisman,shortcut:v.shortcut,bossDefeated:v.bossDefeated,deaths:v.deaths,cycle:v.cycle,collected:v.collected};
+ const p={x:SHRINE.x,y:SHRINE.y+62,r:10,face:-Math.PI/2,hp:100+v.vigor*20,maxHp:100+v.vigor*20,stamina:100,souls:v.souls,flasks:3+v.cycle,action:null,invulnerable:0,regenDelay:0,flash:0,walk:0,moving:false};
+ const s={player:p,progress,enemies:spawnEnemies(v.cycle),drop:v.drop,effects:[],projectiles:[],events:[],time:0,dead:false,deathTimer:0,bossActive:false,shake:0,hitStop:0,area:'refuge',visits:new Set(['refuge']),kills:0};
  if(v.bossDefeated)s.enemies.find(e=>e.type==='boss').dead=true;
  return s;
 }
@@ -145,11 +148,16 @@ export function interact(s){
  if(item.kind==='loot'){s.player.souls+=LOOT[item.id].amount;s.progress.collected.push(item.id);emit(s,'sound',{name:'handleCoins'});emit(s,'toast',{text:'+'+LOOT[item.id].amount+' fragments'});emit(s,'save');}
 }
 export function rest(s){
- const p=s.player;p.hp=p.maxHp;p.stamina=100;p.flasks=3;p.action=null;p.buffer=null;p.invulnerable=1;
- s.enemies=spawnEnemies();if(s.progress.bossDefeated)s.enemies.find(e=>e.type==='boss').dead=true;
+ const p=s.player;p.hp=p.maxHp;p.stamina=100;p.flasks=3+s.progress.cycle;p.action=null;p.buffer=null;p.invulnerable=1;
+ s.enemies=spawnEnemies(s.progress.cycle);if(s.progress.bossDefeated)s.enemies.find(e=>e.type==='boss').dead=true;
  s.projectiles=[];s.bossActive=false;emit(s,'save');
 }
 export function respawn(s){s.dead=false;s.player.x=SHRINE.x;s.player.y=SHRINE.y+62;s.area='refuge';rest(s);emit(s,'save');}
+// La veille : après une victoire, tout est conservé, le monde se relève durci.
+export function enterVeille(s){
+ if(!s.progress.bossDefeated||s.progress.cycle>=3)return false;
+ s.progress.cycle++;s.progress.bossDefeated=false;respawn(s);return true;
+}
 export function upgrade(s,kind){
  if(!['vigor','healing'].includes(kind)||s.progress[kind]>=3)return false;
  const cost=(kind==='vigor'?40:35)+s.progress[kind]*30;
