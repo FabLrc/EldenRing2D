@@ -13,7 +13,7 @@ export class Renderer{
   this.heroRunPassing=new Image();this.heroRunPassing.src=new URL('../assets/generated/ash-bell-pilgrim-run-passing-v1.png',import.meta.url).href;
   this.heroBackpedal=new Image();this.heroBackpedal.src=new URL('../assets/generated/ash-bell-pilgrim-backpedal-v1.png',import.meta.url).href;
   this.heroLight=new Image();this.heroLight.src=new URL('../assets/generated/ash-bell-pilgrim-light-v1.png',import.meta.url).href;
-  this.heroHeavy=new Image();this.heroHeavy.src=new URL('../assets/generated/ash-bell-pilgrim-heavy-v1.png',import.meta.url).href;
+  this.heroHeavy=new Image();this.heroHeavy.src=new URL('../assets/generated/ash-bell-pilgrim-heavy-v2.png',import.meta.url).href;
   this.heroPotion=new Image();this.heroPotion.src=new URL('../assets/generated/ash-bell-pilgrim-potion-v1.png',import.meta.url).href;
   this.terrain=document.createElement('canvas');this.terrain.width=COLS*TILE;this.terrain.height=ROWS*TILE;
   this.drawTerrain();this.tiles.onload=()=>this.drawTerrain();
@@ -105,7 +105,7 @@ export class Renderer{
    if(!image.complete||!image.naturalWidth)return false;
    const time=p.action.time,frame=action==='light'?Number(time>=.13):action==='heavy'?Number(time>=.37):Number(time>=.78);
    const sw=image.naturalWidth/2,sh=image.naturalHeight/4,sx=frame*sw,sy=cardinalRow()*sh;
-   const style=action==='heavy'?{x:-68,y:-75,w:136,h:78,offset:frame?-4:-7}:action==='light'?{x:-50,y:-59,w:100,h:64,offset:frame?5:-3}:{x:-40,y:-58,w:80,h:60,offset:frame?8:-12};
+   const style=action==='heavy'?{x:-40,y:-60,w:80,h:60,offset:frame?-2:-4}:action==='light'?{x:-50,y:-59,w:100,h:64,offset:frame?5:-3}:{x:-40,y:-58,w:80,h:60,offset:frame?8:-12};
    c.save();c.translate(Math.round(p.x),Math.round(p.y));ellipse(c,0,2,15,5,'#061217aa');c.translate(style.offset,0);
    c.drawImage(image,sx,sy,sw,sh,style.x,style.y,style.w,style.h);c.restore();return true;
   }
