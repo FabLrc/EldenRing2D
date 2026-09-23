@@ -12,17 +12,17 @@
   <main id="app">
     <canvas id="game" width="960" height="540" aria-label="Sanctuaire des cendres, jeu d’action en vue trois quarts"></canvas>
     <div class="vignette" aria-hidden="true"></div>
-    <header class="topline"><a href="#" id="brand" aria-label="Mettre en pause"><span class="sigil">♜</span> CENDRES <span class="brand-rule"></span><span class="edition">DÉMO JOUABLE · 01</span></a><div class="top-actions"><span id="saved">SAUVEGARDE LOCALE</span><button id="sound" class="icon-button" aria-label="Désactiver le son" title="Son">♫</button><button id="fullscreen" class="icon-button" aria-label="Plein écran" title="Plein écran">⛶</button><button id="pause-button" class="icon-button" aria-label="Pause" title="Pause · Échap">Ⅱ</button></div></header>
+    <header class="topline"><a href="#" id="brand" aria-label="Mettre en pause"><span class="sigil game-icon icon-crest" aria-hidden="true"></span> CENDRES <span class="brand-rule"></span><span class="edition">DÉMO JOUABLE · 01</span></a><div class="top-actions"><span id="saved">SAUVEGARDE LOCALE</span><button id="sound" class="icon-button" aria-label="Désactiver le son" title="Son"><span class="game-icon icon-bell" aria-hidden="true"></span></button><button id="fullscreen" class="icon-button" aria-label="Plein écran" title="Plein écran"><span class="game-icon icon-expand" aria-hidden="true"></span></button><button id="pause-button" class="icon-button" aria-label="Pause" title="Pause · Échap"><span class="game-icon icon-pause" aria-hidden="true"></span></button></div></header>
     <section id="title-screen" class="screen title-screen">
       <div class="title-content"><div class="eyebrow"><span></span> UN SANCTUAIRE OUBLIÉ</div><h1>La Cloche<br>des <em>Cendres</em></h1><p class="intro">La cloche sonne encore.<br>Quelqu’un doit faire taire le gardien.</p><button id="start" class="primary">Entrer dans le sanctuaire <span>↗</span></button><button id="title-credits" class="text-button">À propos & crédits</button><div class="title-meta"><span>EXPLORER</span><i>◆</i><span>APPRENDRE</span><i>◆</i><span>RECOMMENCER</span></div></div>
-      <div class="title-note"><span class="small-cross">✧</span><span>Une flamme dans les ruines.<br><strong>Le dernier refuge.</strong></span></div>
+      <div class="title-note"><span class="small-cross game-icon icon-talisman" aria-hidden="true"></span><span>Une flamme dans les ruines.<br><strong>Le dernier refuge.</strong></span></div>
       <div class="title-bottom"><span>UNE AVENTURE EN PIXEL ART</span><span>CLAVIER & SOURIS / MANETTE / TACTILE</span></div>
     </section>
     <section id="hud" hidden aria-label="État du personnage">
-      <div class="vitals"><div class="player-seal">✧</div><div class="bars"><div class="bar-label"><span>LE PÈLERIN</span><span id="hp-value">100 / 100</span></div><div class="meter health"><div id="hp-bar"></div></div><div class="meter stamina"><div id="stamina-bar"></div></div></div></div>
-      <div class="objective"><span id="area">LE DERNIER REFUGE</span><p id="objective">Atteindre le clocher</p><span id="veille-badge" hidden title="Niveau de difficulté de la veille en cours"></span><button id="map-button" class="text-button">Carte <kbd>M</kbd></button></div>
-      <div class="inventory"><div class="flask-icon">♜</div><div><strong id="flasks">3</strong><span>FIOLES <kbd>R</kbd></span></div><div class="inventory-divider"></div><span class="rune-symbol">✦</span><strong id="souls">0</strong><span class="fragments-label">FRAGMENTS</span><span id="talisman" hidden title="Talisman : récupération d’endurance améliorée">❖</span></div>
-      <div class="controls"><span><kbd>Espace</kbd> Esquive</span><span><kbd>⚊</kbd> Attaque · clic gauche</span><span><kbd>⚒</kbd> Lourde · clic droit</span><span><kbd>E</kbd> Interagir</span><span><kbd>Échap</kbd> Pause</span></div>
+      <div class="vitals"><div class="player-seal"><span class="game-icon icon-crest" aria-hidden="true"></span></div><div class="bars"><div class="bar-label"><span>LE PÈLERIN</span><span id="hp-value">100 / 100</span></div><div class="meter health"><div id="hp-bar"></div></div><div class="meter stamina"><div id="stamina-bar"></div></div></div></div>
+      <div class="objective"><span id="area">LE DERNIER REFUGE</span><p id="objective">Atteindre le clocher</p><span id="veille-badge" hidden title="Niveau de difficulté de la veille en cours"></span><button id="map-button" class="text-button"><span class="game-icon icon-map" aria-hidden="true"></span> Carte <kbd>M</kbd></button></div>
+      <div class="inventory"><div class="flask-icon"><span class="game-icon icon-potion" aria-hidden="true"></span></div><div><strong id="flasks">3</strong><span>FIOLES <kbd>R</kbd></span></div><div class="inventory-divider"></div><span class="rune-symbol game-icon icon-fragment" aria-hidden="true"></span><strong id="souls">0</strong><span class="fragments-label">FRAGMENTS</span><span id="talisman" hidden title="Talisman : récupération d’endurance améliorée"><span class="game-icon icon-talisman" aria-hidden="true"></span></span></div>
+      <div class="controls"><span><kbd>Espace</kbd> Esquive</span><span><kbd><span class="game-icon icon-sword" aria-hidden="true"></span></kbd> Attaque · clic gauche</span><span><kbd><span class="game-icon icon-hammer" aria-hidden="true"></span></kbd> Lourde · clic droit</span><span><kbd>E</kbd> Interagir</span><span><kbd>Échap</kbd> Pause</span></div>
       <div id="boss-hud" hidden><div class="boss-heading"><span>LE GARDIEN DU CLOCHER</span><span id="boss-phase">LE SERMENT</span></div><div class="meter boss"><div id="boss-bar"></div></div></div>
       <div id="interact" hidden></div><div id="toast" role="status" aria-live="polite"></div><div id="area-banner"></div>
     </section>
@@ -30,20 +30,20 @@
       <div id="stick-zone" aria-label="Stick de déplacement virtuel"><div id="stick-base"><div id="stick-knob"></div></div></div>
       <div id="touch-buttons">
         <div class="touch-row">
-          <button type="button" class="touch-btn" data-action="heal" aria-label="Boire une fiole">♡</button>
-          <button type="button" class="touch-btn" data-action="parry" aria-label="Parade">⛨</button>
-          <button type="button" class="touch-btn" data-action="roll" aria-label="Esquive">⟳</button>
+          <button type="button" class="touch-btn" data-action="heal" aria-label="Boire une fiole"><span class="game-icon icon-potion" aria-hidden="true"></span></button>
+          <button type="button" class="touch-btn" data-action="parry" aria-label="Parade"><span class="game-icon icon-shield" aria-hidden="true"></span></button>
+          <button type="button" class="touch-btn" data-action="roll" aria-label="Esquive"><span class="game-icon icon-dodge" aria-hidden="true"></span></button>
         </div>
         <div class="touch-row">
-          <button type="button" class="touch-btn" data-action="interact" aria-label="Interagir">✦</button>
-          <button type="button" class="touch-btn" data-action="heavy" aria-label="Attaque lourde">⚒</button>
-          <button type="button" class="touch-btn touch-main" data-action="light" aria-label="Attaque légère">⚊</button>
+          <button type="button" class="touch-btn" data-action="interact" aria-label="Interagir"><span class="game-icon icon-fragment" aria-hidden="true"></span></button>
+          <button type="button" class="touch-btn" data-action="heavy" aria-label="Attaque lourde"><span class="game-icon icon-hammer" aria-hidden="true"></span></button>
+          <button type="button" class="touch-btn touch-main" data-action="light" aria-label="Attaque légère"><span class="game-icon icon-sword" aria-hidden="true"></span></button>
         </div>
       </div>
     </div>
     <div id="rotate-hint">Tournez l’appareil<br><strong>en paysage</strong></div>
     <section id="modal" class="screen modal" hidden><div class="modal-card" id="modal-content"></div></section>
-    <section id="map-screen" class="screen map-screen" hidden><div class="map-card"><div class="eyebrow">LES TERRES DU SILENCE</div><h2>Le sanctuaire</h2><canvas id="map" width="580" height="440" aria-label="Carte du sanctuaire"></canvas><div class="map-legend"><span>● Pèlerin</span><span>✧ Refuge</span><span>◆ Clocher</span><span>❖ Talisman</span></div><button id="close-map" class="secondary">Reprendre <kbd>M</kbd></button></div></section>
+    <section id="map-screen" class="screen map-screen" hidden><div class="map-card"><div class="eyebrow">LES TERRES DU SILENCE</div><h2>Le sanctuaire</h2><canvas id="map" width="580" height="440" aria-label="Carte du sanctuaire"></canvas><div class="map-legend"><span>● Pèlerin</span><span><i class="game-icon icon-crest" aria-hidden="true"></i> Refuge</span><span>◆ Clocher</span><span><i class="game-icon icon-talisman" aria-hidden="true"></i> Talisman</span></div><button id="close-map" class="secondary">Reprendre <kbd>M</kbd></button></div></section>
     <div id="fatal" hidden role="alert">Le jeu n’a pas pu démarrer. Rechargez la page dans un navigateur récent.</div>
   </main>
   <script type="module" src="./src/main.js"></script>

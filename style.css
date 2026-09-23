@@ -85,3 +85,38 @@ body.touch #interact{bottom:168px}
   #map{max-height:36vh}
   .map-legend{margin:6px 0 10px}
 }
+
+/* Atlas commun des pictogrammes pixel art du pèlerinage. */
+.game-icon{display:inline-block;width:1.2em;height:1.2em;flex:0 0 auto;vertical-align:-.24em;background-image:url('./assets/icons/pixel-icons.png');background-repeat:no-repeat;background-size:400% 200%;image-rendering:pixelated}
+.icon-potion{background-position:0 0}
+.icon-sword{background-position:33.333% 0}
+.icon-hammer{background-position:66.667% 0}
+.icon-shield{background-position:100% 0}
+.icon-dodge{background-position:0 100%}
+.icon-fragment{background-position:33.333% 100%}
+.icon-talisman{background-position:66.667% 100%}
+.icon-crest{background-position:100% 100%}
+.sigil.game-icon{width:32px;height:32px;font-size:initial}
+.small-cross.game-icon{width:38px;height:38px;flex:0 0 38px}
+.player-seal>.game-icon{width:34px;height:34px;transform:rotate(-45deg)}
+.flask-icon>.game-icon{width:38px;height:38px;vertical-align:middle}
+.rune-symbol.game-icon{width:30px;height:30px}
+#talisman{display:grid;place-items:center;width:28px;height:28px}
+#talisman>.game-icon{width:28px;height:28px}
+.controls kbd{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:22px;padding:1px 3px}
+.controls kbd>.game-icon{width:19px;height:19px;vertical-align:middle}
+.touch-btn>.game-icon{width:34px;height:34px;vertical-align:middle}
+.touch-btn.touch-main>.game-icon{width:42px;height:42px}
+.upgrade .game-icon{width:16px;height:16px;vertical-align:-3px}
+.stat-line .game-icon{width:19px;height:19px;vertical-align:-4px}
+.modal-card p>.game-icon{width:19px;height:19px;vertical-align:-4px}
+#interact kbd>.game-icon{width:17px;height:17px;vertical-align:-3px}
+.map-legend>.game-icon,.map-legend i.game-icon{width:18px;height:18px;vertical-align:-5px}
+.icon-bell,.icon-expand,.icon-pause,.icon-map{background-image:url('./assets/icons/pixel-controls.png');background-size:200% 200%}
+.icon-bell{background-position:0 0}
+.icon-expand{background-position:100% 0}
+.icon-pause{background-position:0 100%}
+.icon-map{background-position:100% 100%}
+.icon-button>.game-icon{width:25px;height:25px;vertical-align:middle}
+#sound.muted>.game-icon{filter:grayscale(1);opacity:.55}
+#map-button>.icon-map{width:20px;height:20px;vertical-align:-5px;margin-right:4px}
