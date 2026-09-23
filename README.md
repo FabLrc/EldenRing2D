@@ -55,7 +55,7 @@ Après rechargement, le pèlerin revient au refuge avec vie et fioles restaurée
 La commande « Recommencer la démo » demande confirmation avant de remplacer cette progression.
 Si le navigateur bloque le stockage, la partie reste jouable et l’interface l’indique.
 
-Après une victoire, « Entrer dans la veille » relance le pèlerinage : tout est conservé, mais les ennemis et le boss reviennent avec ×1,4 PV et dégâts par cycle, et le pèlerin gagne une fiole. Trois cycles au plus. L’écran de victoire rappelle ce que ce choix implique avant de l’accepter.
+Après une victoire, « Entrer dans la veille » relance le pèlerinage : tout est conservé, mais les ennemis et le boss reviennent avec ×1,4 PV et dégâts par cycle, et le pèlerin gagne une fiole. Trois cycles au plus. L’écran de victoire rappelle ce que ce choix implique avant de l’accepter. Si le joueur préfère explorer, la veille reste accessible depuis le refuge.
 
 Le cycle en cours est affiché en permanence par un badge « Veille I / II / III » sous l’objectif du HUD ; son survol détaille les multiplicateurs de PV et de dégâts, le bonus de fioles et ce qui est conservé. Le badge reste masqué pendant le premier parcours.
 

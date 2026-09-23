@@ -52,8 +52,8 @@ export function spawnEnemies(cycle=0){
 export function createGame(save){
  const v=sanitizeSave(save)||{souls:0,vigor:0,healing:0,talisman:false,shortcut:false,bossDefeated:false,drop:null,deaths:0,cycle:0,collected:[]};
  const progress={vigor:v.vigor,healing:v.healing,talisman:v.talisman,shortcut:v.shortcut,bossDefeated:v.bossDefeated,deaths:v.deaths,cycle:v.cycle,collected:v.collected};
- const p={x:SHRINE.x,y:SHRINE.y+62,r:10,face:-Math.PI/2,moveFace:-Math.PI/2,hp:100+v.vigor*20,maxHp:100+v.vigor*20,stamina:100,souls:v.souls,flasks:3+v.cycle,action:null,invulnerable:0,regenDelay:0,flash:0,hitReact:0,hitReactMax:.3,kickAngle:0,walk:0,moving:false};
- const s={player:p,progress,enemies:spawnEnemies(v.cycle),drop:v.drop,effects:[],projectiles:[],events:[],time:0,dead:false,deathTimer:0,bossActive:false,shake:0,hitStop:0,area:'refuge',visits:new Set(['refuge']),kills:0};
+ const p={x:SHRINE.x,y:SHRINE.y+62,r:10,face:-Math.PI/2,moveFace:-Math.PI/2,hp:100+v.vigor*20,maxHp:100+v.vigor*20,stamina:100,souls:v.souls,flasks:3+v.cycle,action:null,invulnerable:0,regenDelay:0,flash:0,hitReact:0,hitReactMax:.3,kickAngle:0,walk:0,moving:false,stepIdx:0};
+ const s={player:p,progress,enemies:spawnEnemies(v.cycle),drop:v.drop,effects:[],projectiles:[],events:[],time:0,dead:false,deathTimer:0,bossActive:false,shake:0,hitStop:0,slow:0,punch:0,hurtDir:0,hurtDirTimer:0,area:'refuge',visits:new Set(['refuge']),kills:0};
  if(v.bossDefeated)s.enemies.find(e=>e.type==='boss').dead=true;
  return s;
 }
@@ -70,6 +70,10 @@ export function move(s,p,dx,dy){
 export function clearSight(s,a,b){const d=distance(a,b);for(let t=16;t<d;t+=16){let f=t/d;if(blocked(s,a.x+(b.x-a.x)*f,a.y+(b.y-a.y)*f,2))return false;}return true;}
 export function emit(s,type,data={}){s.events.push({type,...data});}
 export function burst(s,x,y,color,n=10){for(let i=0;i<n;i++){const a=i/n*Math.PI*2+s.time;const speed=20+(i*23%70);s.effects.push({x,y,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed-25,life:.4+(i%4)*.15,maxLife:1,color,size:2+(i%2)});}}
+// Poussière de sol : rase le sol, retombe aussitôt.
+function dust(s,x,y,n=5){for(let i=0;i<n;i++){const a=(i/n-.5)*2.4,speed=16+(i*19%30);s.effects.push({x,y:y-2,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed*.3-4,life:.26+(i%3)*.07,maxLife:.4,color:'#9a927c',size:2+(i%2)});}}
+// Punch caméra : léger zoom avant, décroissant.
+function punch(s,amount=1){s.punch=Math.max(s.punch||0,amount);}
 export const PARRY_WINDOW=[.06,.32];
 export function startAction(s,kind,input={}){
  const p=s.player;if(s.dead)return false;
@@ -87,7 +91,7 @@ export function startAction(s,kind,input={}){
  const len=Math.hypot(input.x||0,input.y||0);
  const dir=len?Math.atan2(input.y,input.x):p.face;
  p.action={kind,time:0,duration,face:p.face,dir,hits:new Set(),done:false};
- if(kind==='roll'){p.invulnerable=.32;emit(s,'sound',{name:'cloth1'});}
+ if(kind==='roll'){p.invulnerable=.32;emit(s,'sound',{name:'cloth1'});dust(s,p.x,p.y+2,6);}
  if(kind==='light'||kind==='heavy')emit(s,'sound',{name:kind==='light'?'knifeSlice':'knifeSlice2'});
  if(kind==='roll'||kind==='parry')emit(s,'sound',{name:'cloth1'});
  if(kind==='heal')p.flasks--;
@@ -106,9 +110,10 @@ export function hurtPlayer(s,amount,source,parryable=true){
   return 'parry';
  }
  p.hp=Math.max(0,p.hp-amount);p.invulnerable=.7;p.flash=.2;p.hitReact=p.hitReactMax=.3;p.kickAngle=source?Math.atan2(p.y-source.y,p.x-source.x):p.face+Math.PI;p.action=null;p.buffer=null;s.shake=4;
+ if(source){s.hurtDir=Math.atan2(source.y-p.y,source.x-p.x);s.hurtDirTimer=.55;}
  burst(s,p.x,p.y-12,'#b46b50');emit(s,'sound',{name:'metalPot1'});
  if(source){const a=Math.atan2(p.y-source.y,p.x-source.x);move(s,p,Math.cos(a)*12,Math.sin(a)*12);}
- if(p.hp<=0){s.dead=true;s.deathTimer=1.5;s.progress.deaths++;s.drop=p.souls?{x:p.x,y:p.y,amount:p.souls}:null;p.souls=0;emit(s,'save');}
+ if(p.hp<=0){s.dead=true;s.deathTimer=1.5;s.slow=.85;s.progress.deaths++;s.drop=p.souls?{x:p.x,y:p.y,amount:p.souls}:null;p.souls=0;emit(s,'save');}
  return true;
 }
 export function hurtEnemy(s,e,amount,heavy=false,crit=false){
@@ -121,8 +126,13 @@ export function hurtEnemy(s,e,amount,heavy=false,crit=false){
  burst(s,e.x,e.y-12,heavy||crit?'#ffe0a0':'#f7ebc9',heavy||crit?22:13);
  s.effects.push({impact:true,heavy:heavy||crit,x:e.x,y:e.y-15,angle:hitAngle,life:(heavy||crit)?.22:.14,maxLife:(heavy||crit)?.22:.14,color:heavy||crit?'#fff3cf':'#fff8e2'});
  s.hitStop=Math.max(s.hitStop,crit?.1:heavy?.082:.038);s.shake=Math.max(s.shake,crit?5.4:heavy?4.8:2.25);
+ if(crit){punch(s,1);s.effects.push({popup:true,x:e.x,y:e.y-34,text:Math.round(amount),life:.85,maxLife:.85,color:'#ffe3a4'});}
  if(heavy&&e.type!=='boss'&&e.state!=='stun'){e.state='stun';e.timer=.65;}
- if(e.hp<=0){e.dead=true;s.player.souls+=e.reward;s.kills++;emit(s,'sound',{name:'handleCoins'});burst(s,e.x,e.y-10,'#d5b97b',18);
+ if(e.hp<=0){e.dead=true;s.player.souls+=e.reward;s.kills++;
+  // Mise à mort : un gel court puis un ralenti de suivi.
+  s.hitStop=Math.max(s.hitStop,.07);s.slow=.22;
+  if(e.type==='boss')punch(s,1.4);
+  emit(s,'sound',{name:'handleCoins'});burst(s,e.x,e.y-10,'#d5b97b',18);
   if(e.type==='boss'){s.bossActive=false;s.progress.bossDefeated=true;s.projectiles=[];emit(s,'victory');}
   emit(s,'save');
  }
@@ -150,7 +160,7 @@ export function interact(s){
 export function rest(s){
  const p=s.player;p.hp=p.maxHp;p.stamina=100;p.flasks=3+s.progress.cycle;p.action=null;p.buffer=null;p.hitReact=0;p.invulnerable=1;
  s.enemies=spawnEnemies(s.progress.cycle);if(s.progress.bossDefeated)s.enemies.find(e=>e.type==='boss').dead=true;
- s.projectiles=[];s.bossActive=false;emit(s,'save');
+ s.projectiles=[];s.bossActive=false;s.hitStop=0;s.slow=0;s.punch=0;s.hurtDirTimer=0;emit(s,'save');
 }
 export function respawn(s){s.dead=false;s.player.x=SHRINE.x;s.player.y=SHRINE.y+62;s.area='refuge';rest(s);emit(s,'save');}
 // La veille : après une victoire, tout est conservé, le monde se relève durci.
@@ -171,7 +181,7 @@ function attackEnemy(s,e){
   s.projectiles.push({x:e.x,y:e.y-8,vx:Math.cos(e.face)*155,vy:Math.sin(e.face)*155,life:3,damage:e.damage,r:5});
  }else if(e.type==='boss'&&e.attackKind==='slam'){
   if(d<145&&clearSight(s,e,p))hurtPlayer(s,e.damage+5,e,false);
-  s.effects.push({x:e.x,y:e.y,ring:true,radius:145,life:.5,maxLife:.5,color:'#e6b573'});s.shake=6;
+  s.effects.push({x:e.x,y:e.y,ring:true,radius:145,life:.5,maxLife:.5,color:'#e6b573'});s.shake=6;punch(s,1);
  }else if(d<e.reach+12&&Math.abs(angleDiff(a,e.face))<(e.type==='watcher'?.48:1.15)&&clearSight(s,e,p)){
   if(hurtPlayer(s,e.damage,e)!=='parry')emit(s,'enemyStrike',{enemy:e});
  }else emit(s,'enemyStrike',{enemy:e});
@@ -189,7 +199,7 @@ function updateEnemy(s,e,dt){
  const p=s.player;let d=distance(e,p),a=Math.atan2(p.y-e.y,p.x-e.x);
  if(e.type==='boss'){
   if(!s.bossActive)return;
-  if(e.hp<=e.maxHp*.5&&e.phase===1){e.phase=2;e.state='stun';e.timer=1.5;e.speed=65;burst(s,e.x,e.y-30,'#e5ac61',40);emit(s,'toast',{text:'Les chaînes se brisent. Le gardien se souvient.'});}
+   if(e.hp<=e.maxHp*.5&&e.phase===1){e.phase=2;e.state='stun';e.timer=1.5;e.speed=65;burst(s,e.x,e.y-30,'#e5ac61',40);punch(s,1.1);emit(s,'toast',{text:'Les chaînes se brisent. Le gardien se souvient.'});}
  }
  if(e.state==='stun'){if(e.timer<=0){e.state='idle';e.parried=false;}return;}
  if(e.state==='windup'){
@@ -214,13 +224,18 @@ function updateEnemy(s,e,dt){
 }
 export function update(s,input,dt){
  dt=clamp(dt,0,.04);
- const visualDt=s.hitStop>0?dt*.18:dt;
- s.time+=visualDt;s.shake=Math.max(0,s.shake-visualDt*15);
- for(const f of s.effects){f.life-=visualDt;if(!f.ring&&!f.impact){f.x+=f.vx*visualDt;f.y+=f.vy*visualDt;f.vy+=50*visualDt;}}
+ const wall=dt;
+ // Ralenti (mise à mort, chute) puis gel d'impact : le temps visuel ralentit, le temps réel non.
+ if(s.slow>0)s.slow=Math.max(0,s.slow-wall);
+ const vdt=wall*(s.hitStop>0?.18:s.slow>0?(s.dead?.28:.35):1);
+ s.time+=vdt;s.shake=Math.max(0,s.shake-vdt*15);s.punch=Math.max(0,s.punch-vdt*8);
+ for(const f of s.effects){f.life-=vdt;if(!f.ring&&!f.impact&&!f.popup){f.x+=f.vx*vdt;f.y+=f.vy*vdt;f.vy+=50*vdt;}}
  s.effects=s.effects.filter(f=>f.life>0);
- if(s.hitStop>0){s.hitStop=Math.max(0,s.hitStop-dt);return;}
- if(s.dead){s.deathTimer-=dt;if(s.deathTimer<=0&&!s.deathShown){s.deathShown=true;emit(s,'death');}return;}
+ if(s.hurtDirTimer>0)s.hurtDirTimer=Math.max(0,s.hurtDirTimer-wall);
+ if(s.hitStop>0){s.hitStop=Math.max(0,s.hitStop-wall);return;}
+ if(s.dead){s.deathTimer-=wall;if(s.deathTimer<=0&&!s.deathShown){s.deathShown=true;emit(s,'death');}return;}
  s.deathShown=false;
+ dt=vdt;
   const p=s.player;p.invulnerable=Math.max(0,p.invulnerable-dt);p.flash=Math.max(0,p.flash-dt);p.hitReact=Math.max(0,p.hitReact-dt);p.regenDelay-=dt;
  let mx=input.x||0,my=input.y||0,len=Math.hypot(mx,my);if(len>1){mx/=len;my/=len;}
  if(!p.action&&Number.isFinite(input.angle))p.face=input.angle;
@@ -236,7 +251,8 @@ export function update(s,input,dt){
     }
    }
    if(a.time>=a.duration){p.action=null;if(p.buffer){const b=p.buffer;p.buffer=null;startAction(s,b.kind,b.input);}}
-  }else if(len>.08){p.moveFace=Math.atan2(my,mx);move(s,p,mx*118*dt,my*118*dt);p.walk+=dt*10;p.moving=true;}
+  }else if(len>.08){p.moveFace=Math.atan2(my,mx);move(s,p,mx*118*dt,my*118*dt);p.walk+=dt*10;p.moving=true;
+   const step=Math.floor(p.walk/Math.PI);if(step!==p.stepIdx){p.stepIdx=step;dust(s,p.x,p.y+2,3);}}
  const room=ROOMS.find(r=>p.x>=r.x*TILE&&p.x<(r.x+r.w)*TILE&&p.y>=r.y*TILE&&p.y<(r.y+r.h)*TILE);
  if(room&&room.id!==s.area){s.area=room.id;s.visits.add(room.id);emit(s,'area',{room});}
  if(room?.id==='boss'&&!s.progress.bossDefeated&&!s.bossActive&&p.x<FOG.x-30&&p.y<26*TILE){s.bossActive=true;emit(s,'boss');}
