@@ -27,11 +27,19 @@ import puppeteer from 'puppeteer-core';
     assert.equal(controlsHidden, true, 'touch-controls masqués sur le titre');
     const rotateDisplay = await page.$eval('#rotate-hint', el => getComputedStyle(el).display);
     assert.equal(rotateDisplay, 'none', 'pas de rotate-hint en paysage');
+    const titleFits = await page.$eval('.title-content', el => {
+      const r=el.getBoundingClientRect(); return r.x>=0&&r.y>=0&&r.right<=innerWidth&&r.bottom<=innerHeight;
+    });
+    assert.equal(titleFits, true, 'le contenu du titre tient dans le paysage mobile');
 
     // Démarrage : le help s’ouvre (pas de sauvegarde) — touch-controls masqués sous la modale.
     await page.click('#start');
     await new Promise(r=>setTimeout(r,300));
     assert.equal(await page.$eval('#touch-controls', el => el.hidden), true, 'masqués sous le help');
+    const modalFits = await page.$eval('.modal-card', el => {
+      const r=el.getBoundingClientRect(); return r.y>=0&&r.bottom<=innerHeight;
+    });
+    assert.equal(modalFits, true, 'la modale reste dans le viewport paysage');
     await page.click('#help-back');
     await new Promise(r=>setTimeout(r,200));
     assert.equal(await page.$eval('#touch-controls', el => el.hidden), false, 'visibles en jeu');
@@ -87,6 +95,39 @@ import puppeteer from 'puppeteer-core';
     await new Promise(r=>setTimeout(r,150));
     assert.equal(await page.$eval('#touch-controls', el => el.hidden), false, 'reviennent après reprise');
 
+    // HUD et commandes restent dans leurs zones dédiées sur plusieurs paysages mobiles.
+    for (const [width, height] of [[740,360],[844,390],[932,430]]) {
+      await page.setViewport({ width, height, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+      const layout = await page.evaluate(() => {
+        const rect = selector => {
+          const {x,y,width,height} = document.querySelector(selector).getBoundingClientRect();
+          return {x,y,width,height,right:x+width,bottom:y+height};
+        };
+        const interact = document.querySelector('#interact'), boss = document.querySelector('#boss-hud');
+        const toast = document.querySelector('#toast'), oldToast = toast.textContent, oldClass = toast.className;
+        const oldInteract = interact.hidden, oldBoss = boss.hidden;
+        interact.hidden = false; boss.hidden = false; toast.textContent = 'Message mobile'; toast.classList.add('show');
+        const result = {
+          width: innerWidth, height: innerHeight,
+          stick: rect('#stick-zone'), buttons: rect('#touch-buttons'),
+          vitals: rect('.vitals'), inventory: rect('.inventory'), objective: rect('.objective'),
+          boss: rect('#boss-hud'), toast: rect('#toast'), interact: rect('#interact'),
+          buttonRects: [...document.querySelectorAll('.touch-btn')].map(button => {
+            const r=button.getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};
+          })
+        };
+        interact.hidden = oldInteract; boss.hidden = oldBoss; toast.textContent = oldToast; toast.className = oldClass;
+        return result;
+      });
+      const overlaps = (a,b) => a.x < b.right && a.right > b.x && a.y < b.bottom && a.bottom > b.y;
+      assert.ok(layout.stick.y >= height*.55 && layout.stick.right <= width*.43, `${width}x${height}: stick limité au bas-gauche`);
+      assert.ok(layout.buttons.x >= 0 && layout.buttons.right <= width && layout.buttons.bottom <= height, `${width}x${height}: commandes dans l’écran`);
+      assert.ok(layout.buttonRects.every(r => r.width >= 48 && r.height >= 48 && r.x >= 0 && r.right <= width && r.y >= 0 && r.bottom <= height), `${width}x${height}: boutons tactiles accessibles`);
+      assert.ok(layout.objective.right <= width && layout.vitals.x >= 0 && layout.inventory.bottom < layout.stick.y, `${width}x${height}: HUD compact et dégagé`);
+      assert.ok(!overlaps(layout.boss, layout.toast) && !overlaps(layout.toast, layout.interact), `${width}x${height}: retours visuels empilés sans chevauchement`);
+      assert.ok(!overlaps(layout.stick, layout.interact) && !overlaps(layout.buttons, layout.interact), `${width}x${height}: invite d’interaction dégagée`);
+    }
+
     // Portrait : le rotate-hint s’affiche.
     await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
     await new Promise(r=>setTimeout(r,150));
@@ -94,7 +135,7 @@ import puppeteer from 'puppeteer-core';
 
     await page.screenshot({ path: 'test-results/touch-landscape.png' });
     assert.deepEqual(errors, []);
-    console.log('OK — tactile : détection, stick, bouton esquive, pause, portrait. Aucune erreur JS.');
+    console.log('OK — tactile : titre/modale, HUD paysage (740–932 px), commandes, pause et portrait. Aucune erreur JS.');
   } finally {
     await browser.close();
   }

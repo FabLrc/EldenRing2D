@@ -23,3 +23,65 @@ body.touch #interact{bottom:168px}
 .touch-btn[data-action="interact"][data-active]{border-color:#c9ad77;box-shadow:0 0 14px #c9ad7766;color:#f0d9a4}
 #rotate-hint{display:none;position:absolute;inset:0;z-index:30;background:#081112f2;place-items:center;text-align:center;font:15px/1.7 Georgia,serif;color:#e0d6bc;letter-spacing:2px;padding:30px}
 @media(orientation:portrait) and (pointer:coarse){#rotate-hint{display:grid}}
+
+@media (orientation:landscape) and (pointer:coarse) and (max-height:600px){
+  #app{min-height:0}
+  .topline{height:calc(48px + env(safe-area-inset-top));padding:env(safe-area-inset-top) max(12px,env(safe-area-inset-right)) 0 max(12px,env(safe-area-inset-left))}
+  #brand{gap:8px;letter-spacing:2px;font-size:10px}
+  .sigil{font-size:22px}
+  .brand-rule,.edition,#saved,.title-note,.title-meta{display:none}
+  .top-actions{gap:2px}
+  .icon-button{width:44px;height:44px;padding:0;display:grid;place-items:center}
+
+  .title-content{left:max(6%,env(safe-area-inset-left));top:50%;transform:translateY(-50%);max-width:min(500px,64vw)}
+  h1{font-size:clamp(38px,9vh,50px);line-height:1;letter-spacing:-2px;margin:12px 0}
+  .intro{font-size:13px;line-height:1.5;margin:0 0 16px}
+  .title-content .primary{min-width:min(285px,72vw);padding:12px 16px;font-size:13px}
+  .title-content .text-button{padding:10px 0}
+  .title-bottom{left:max(16px,env(safe-area-inset-left));right:max(16px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom));font-size:7px;letter-spacing:1px}
+
+  .vitals{top:calc(54px + env(safe-area-inset-top));left:max(16px,env(safe-area-inset-left));gap:9px}
+  .player-seal{width:32px;height:32px;flex:0 0 32px;font-size:22px}
+  .bars{width:clamp(130px,21vw,190px)}
+  .bar-label{font-size:8px;letter-spacing:1px;margin-bottom:4px}
+  .health{height:7px}
+  .stamina{height:4px;margin-top:4px}
+  .objective{top:calc(54px + env(safe-area-inset-top));right:max(16px,env(safe-area-inset-right));max-width:38vw}
+  .objective>span{font-size:8px;letter-spacing:1px}
+  .objective p{font-size:12px;line-height:1.2;margin:4px 0 0}
+  .objective .text-button{min-width:44px;min-height:44px;padding:6px 8px}
+  .inventory{top:calc(112px + env(safe-area-inset-top));bottom:auto;left:max(16px,env(safe-area-inset-left));gap:8px}
+  .flask-icon{width:36px;height:38px;padding-top:3px;font-size:26px}
+  .inventory>div>strong{font-size:19px}
+  .inventory>div>span{font-size:7px;letter-spacing:.7px;margin-top:3px}
+  .inventory-divider{height:24px;margin:0 1px}
+  .rune-symbol{font-size:21px}
+  #souls{font-size:18px}
+  .fragments-label{display:inline}
+  #talisman{font-size:21px}
+  #boss-hud,body.touch #boss-hud{top:calc(50% - 126px);bottom:auto;left:33%;right:33%}
+  .boss-heading{gap:6px;font-size:8px;letter-spacing:1px;margin-bottom:4px}
+  #boss-phase{font-size:7px;letter-spacing:.5px}
+  .boss{height:7px}
+  #toast{top:calc(50% - 70px);font-size:12px;line-height:1.2;padding:8px 12px;max-width:min(80vw,460px)}
+  #interact,body.touch #interact{top:50%;bottom:auto;transform:translate(-50%,-50%);padding:9px 14px;font-size:12px;max-width:min(70vw,340px);text-align:center}
+  #area-banner{top:calc(50% + 68px);font-size:clamp(16px,3vw,24px);letter-spacing:2px}
+
+  #stick-zone{width:42%;height:min(38vh,145px)}
+  #touch-buttons{right:max(12px,calc(env(safe-area-inset-right) + 8px));bottom:max(12px,calc(env(safe-area-inset-bottom) + 8px));gap:7px}
+  .touch-row{gap:8px}
+  .touch-btn{width:50px;height:50px}
+  .touch-btn.touch-main{width:62px;height:62px}
+
+  .modal{padding:max(10px,env(safe-area-inset-top)) 12px max(10px,env(safe-area-inset-bottom))}
+  .modal-card{width:min(560px,calc(100vw - 24px));max-height:calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));padding:14px 20px}
+  .modal-card h2,.map-card h2{font-size:clamp(24px,4vh,30px);margin:8px 0}
+  .modal-card p{font-size:12px;line-height:1.45;margin:8px 0}
+  .modal-card button{min-height:40px;margin-top:7px}
+  .modal-card .primary,.modal-card .secondary{padding:9px 12px;font-size:12px}
+  .control-grid{gap:8px;margin:12px 0;font-size:10px}
+  .map-card{width:min(660px,calc(100vw - 24px));max-height:calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));padding:14px 20px}
+  .map-card h2{margin:5px}
+  #map{max-height:36vh}
+  .map-legend{margin:6px 0 10px}
+}
