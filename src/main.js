@@ -1,4 +1,4 @@
-import {createGame,update,startAction,interact,nearby,respawn,enterVeille,upgrade,serialize,ROOMS,SHRINE,distance,clamp} from './core.js';
+import {createGame,update,startAction,interact,nearby,respawn,enterVeille,upgrade,serialize,ROOMS,SHRINE,SUBTITLES,distance,clamp} from './core.js';
 import {Renderer} from './render.js';
 const $=id=>document.getElementById(id);
 const icon=(name,extra='')=>`<span class="game-icon icon-${name}${extra?' '+extra:''}" aria-hidden="true"></span>`;
@@ -32,6 +32,11 @@ function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(serialize(s)));
 if(!storageAvailable)$('saved').textContent='SAUVEGARDE INDISPONIBLE';
 if(stored)$('start').innerHTML='Reprendre le pèlerinage <span>↗</span>';
 function toast(text){$('toast').textContent=text;$('toast').classList.add('show');toastTimer=3.7;}
+function banner(name,sub,dur=3){$('area-banner').textContent=name;$('area-sub').textContent=sub;$('area-banner').classList.add('show');$('area-sub').classList.add('show');areaTimer=dur;}
+function inscription(text,note=''){
+ setModal(`<div class="eyebrow">GRAVÉ DANS LA PIERRE</div><h2>Une inscription.</h2><p class="inscription-text">«&#8239;${text}&#8239;»</p>${note?`<p class="inscription-note">${note}</p>`:''}<button class="primary" id="inscription-back">Reprendre la route</button>`,'inscription');
+ $('inscription-back').onclick=resume;
+}
 function setModal(html,nextMode){mode=nextMode;keys.clear();resetStick();$('touch-controls').hidden=true;$('modal-content').innerHTML=html;$('modal').hidden=false;$('map-screen').hidden=true;}
 function resume(){mode='play';keys.clear();resetStick();$('touch-controls').hidden=!usingTouch;$('modal').hidden=true;$('map-screen').hidden=true;$('game').focus();lastTime=performance.now();}
 function pause(){if(mode!=='play'&&mode!=='map')return;holdLeft=0;save();setModal(`<div class="eyebrow">LE TEMPS SUSPENDU</div><h2>Une halte dans les cendres.</h2><p>Le sanctuaire peut attendre.</p><button class="primary" id="resume">Reprendre le pèlerinage</button><button class="secondary" id="help">Commandes & conseils</button><label>Volume <input id="volume" aria-label="Volume sonore" type="range" min="0" max="100" value="${volume*100}"></label><label>Réduire les effets et secousses <input type="checkbox" id="reduced" ${reduced?'checked':''}></label><label>Commandes tactiles <select id="touch-mode" aria-label="Commandes tactiles"><option value="auto"${touchPref==='auto'?' selected':''}>Auto</option><option value="on"${touchPref==='on'?' selected':''}>Toujours</option><option value="off"${touchPref==='off'?' selected':''}>Jamais</option></select></label><button class="secondary" id="credits">À propos & crédits</button><button class="text-button" id="restart">Recommencer la démo</button>`,'pause');
@@ -67,7 +72,7 @@ function action(kind){if(mode!=='play')return;startAction(s,kind,lastInput);}
 let lastInput={x:0,y:0};
 window.addEventListener('keydown',e=>{
  if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();
- if(e.code==='Escape'&&!e.repeat){if(mode==='play'||mode==='map')pause();else if(['pause','help','shrine'].includes(mode))resume();return;}
+  if(e.code==='Escape'&&!e.repeat){if(mode==='play'||mode==='map')pause();else if(['pause','help','shrine','inscription'].includes(mode))resume();return;}
  if(e.code==='KeyM'&&!e.repeat){toggleMap();return;}
  if(mode!=='play')return;keys.add(e.code);usingPad=false;
  if(e.repeat)return;
@@ -121,7 +126,7 @@ function gamepad(input){
  if(pressed(8))toggleMap();
  if(mode==='title'&&pressed(0))$('start').click();
  else if(mode!=='play'&&pressed(0)){
-  const candidates={help:'help-back',shrine:'leave-shrine',dead:'respawn',victory:'explore',pause:'resume',map:'close-map'};if(candidates[mode])$(candidates[mode]).click();
+   const candidates={help:'help-back',shrine:'leave-shrine',dead:'respawn',victory:'explore',pause:'resume',map:'close-map',inscription:'inscription-back'};if(candidates[mode])$(candidates[mode]).click();
  }else if(mode==='play'){
   const aim=rx||ry?Math.atan2(ry,rx):null;
   if(aim!==null&&!s.player.action)s.player.face=aim;
@@ -148,7 +153,12 @@ function hud(){
  $('touch-buttons').querySelector('[data-action="interact"]')?.toggleAttribute('data-active',!!n&&!s.dead);
  const boss=s.enemies.find(e=>e.type==='boss');$('boss-hud').hidden=!s.bossActive;$('boss-bar').style.width=boss.hp/boss.maxHp*100+'%';$('boss-phase').textContent=boss.phase===2?'LES CHAÎNES BRISÉES':'LE SERMENT';
 }
-function events(){while(s.events.length){const e=s.events.shift();if(e.type==='sound')sound(e.name);if(e.type==='toast')toast(e.text);if(e.type==='save')save();if(e.type==='shrine')shrine();if(e.type==='death')death();if(e.type==='victory')victory();if(e.type==='boss')bell();if(e.type==='area'){$('area-banner').textContent=e.room.name;$('area-banner').classList.add('show');areaTimer=3;}}}
+function events(){while(s.events.length){const e=s.events.shift();if(e.type==='sound')sound(e.name);if(e.type==='toast')toast(e.text);if(e.type==='save')save();if(e.type==='shrine')shrine();if(e.type==='death')death();if(e.type==='victory')victory();
+ if(e.type==='bossIntro'){banner('LE GARDIEN DU CLOCHER','il veille sur ce qui ne sonne plus',3.6);bell();setTimeout(bell,550);setTimeout(bell,1100);}
+ if(e.type==='bossPhase')bell();
+ if(e.type==='bossDeath'){bell();setTimeout(bell,450);}
+ if(e.type==='inscription')inscription(e.text,e.note);
+ if(e.type==='area')banner(e.room.name,SUBTITLES[e.room.id]||'',3);}}
 function frame(now){
  const dt=Math.min((now-lastTime)/1000||.016,.04);lastTime=now;
  try{
@@ -164,7 +174,7 @@ function frame(now){
   }else if(mode==='title')s.time+=dt;
   renderer.draw(s,dt,mode==='title'||(mode==='credits'&&!$('title-screen').hidden),reduced);
   if(mode!=='title')hud();
-  toastTimer-=dt;if(toastTimer<0)$('toast').classList.remove('show');areaTimer-=dt;if(areaTimer<0)$('area-banner').classList.remove('show');
+   toastTimer-=dt;if(toastTimer<0)$('toast').classList.remove('show');areaTimer-=dt;if(areaTimer<0){$('area-banner').classList.remove('show');$('area-sub').classList.remove('show');}
  }catch(error){console.error(error);$('fatal').hidden=false;return;}
  requestAnimationFrame(frame);
 }

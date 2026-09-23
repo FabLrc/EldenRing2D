@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createGame,update,startAction,hurtPlayer,hurtEnemy,respawn,interact,upgrade,serialize,sanitizeSave,blocked,move,makeEnemy,enterVeille,WORLD,TILE,SHRINE,GATE,TALISMAN,FOG,clearSight} from '../src/core.js';
+import {createGame,update,startAction,hurtPlayer,hurtEnemy,respawn,interact,upgrade,serialize,sanitizeSave,blocked,move,makeEnemy,enterVeille,WORLD,TILE,SHRINE,GATE,TALISMAN,FOG,clearSight,nearby,INSCRIPTIONS} from '../src/core.js';
 const advance=(s,seconds,input={})=>{for(let t=0;t<seconds;t+=.02)update(s,input,.02);};
 test('les diagonales ne donnent pas de vitesse supplémentaire',()=>{const a=createGame(),b=createGame();a.enemies=[];b.enemies=[];const ax=a.player.x,ay=a.player.y;advance(a,.25,{x:1});advance(b,.25,{x:1,y:1});assert.ok(Math.abs(Math.hypot(a.player.x-ax,a.player.y-ay)-Math.hypot(b.player.x-ax,b.player.y-ay))<.01);});
 test('un déplacement rapide ne traverse pas les murs',()=>{const s=createGame();s.player.x=6*TILE;s.player.y=49*TILE;move(s,s.player,-600,0);assert.ok(s.player.x>5*TILE);assert.equal(blocked(s,s.player.x,s.player.y),false);});
@@ -15,7 +15,13 @@ test('mort, récupération, seconde mort et progression persistante',()=>{const 
 test('la grille ne s’ouvre que depuis le côté clocher',()=>{const s=createGame();s.player.x=GATE.x+GATE.w/2;s.player.y=GATE.y+40;interact(s);assert.equal(s.progress.shortcut,false);s.player.y=GATE.y-30;interact(s);assert.equal(s.progress.shortcut,true);});
 test('talisman et améliorations sont sauvegardés sans double collecte',()=>{const s=createGame();s.player.x=TALISMAN.x;s.player.y=TALISMAN.y;interact(s);assert.equal(s.progress.talisman,true);s.player.souls=100;assert.equal(upgrade(s,'vigor'),true);assert.equal(s.player.maxHp,120);assert.equal(s.player.souls,60);const loaded=createGame(serialize(s));assert.equal(loaded.player.maxHp,120);assert.equal(loaded.progress.talisman,true);assert.equal(loaded.player.souls,60);});
 test('sauvegarde malformée : valeurs invalides ignorées ou bornées',()=>{assert.equal(sanitizeSave({version:2}),null);const s=createGame({version:1,vigor:Infinity,souls:-80,healing:99,drop:{x:NaN,y:1},collected:['x',1]});assert.equal(s.player.maxHp,100);assert.equal(s.player.souls,0);assert.equal(s.progress.healing,3);assert.equal(s.drop,null);});
-test('boss : deuxième phase, victoire et absence après rechargement',()=>{const s=createGame();const boss=s.enemies.find(e=>e.type==='boss');s.player.x=17*TILE;s.player.y=20*TILE;advance(s,.02);assert.equal(s.bossActive,true);hurtEnemy(s,boss,340);advance(s,.4);assert.equal(boss.phase,2);hurtEnemy(s,boss,999);assert.equal(s.progress.bossDefeated,true);assert.equal(s.bossActive,false);assert.equal(createGame(serialize(s)).enemies.find(e=>e.type==='boss').dead,true);});
+test('boss : deuxième phase, victoire et absence après rechargement',()=>{
+ const s=createGame();const boss=s.enemies.find(e=>e.type==='boss');
+ s.player.x=17*TILE;s.player.y=20*TILE;advance(s,.02);assert.equal(s.bossActive,true);
+ advance(s,2.3); // la mise en scène d'entrée se termine avant le duel
+ hurtEnemy(s,boss,340);advance(s,.4);assert.equal(boss.phase,2);
+ hurtEnemy(s,boss,999);assert.equal(s.progress.bossDefeated,true);assert.equal(s.bossActive,false);
+ assert.equal(createGame(serialize(s)).enemies.find(e=>e.type==='boss').dead,true);});
 test('toutes les zones clés sont accessibles sans ouvrir le raccourci',()=>{const s=createGame();const start=[Math.floor(s.player.x/TILE),Math.floor(s.player.y/TILE)];const seen=new Set([start.join(',')]),queue=[start];for(let k=0;k<queue.length;k++){const[x,y]=queue[k];for(const[dx,dy]of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy,key=nx+','+ny;if(!seen.has(key)&&!blocked(s,nx*TILE+16,ny*TILE+16,10)){seen.add(key);queue.push([nx,ny]);}}}for(const[x,y]of [[35,49],[60,43],[44,25],[17,20],[75,15],[17,32]])assert.ok(seen.has(x+','+y),`inaccessible : ${x},${y}`);});
 test('un ennemi derrière une paroi ne voit pas le pèlerin',()=>{const s=createGame();assert.equal(clearSight(s,{x:24*TILE,y:40*TILE},{x:30*TILE,y:40*TILE}),false);});
 test('la veille : monde durci, fiole de plus, cycle sauvegardé',()=>{
@@ -106,4 +112,36 @@ test('la mort du pèlerin ralentit la chute et une blessure signale sa direction
  assert.ok(Math.abs(s.hurtDir)<.01,'la source est à droite du pèlerin');
  const t0=s.time;update(s,{},.02);
  assert.ok(s.time-t0<.01,'la chute est ralentie');
+});
+test('les inscriptions se lisent sur place et portent leur texte',()=>{
+ const s=createGame();s.enemies=[];
+ s.player.x=INSCRIPTIONS[0].x;s.player.y=INSCRIPTIONS[0].y;
+ const near=nearby(s);assert.equal(near.kind,'inscription');assert.equal(near.id,0);
+ interact(s);
+ const ev=s.events.find(e=>e.type==='inscription');
+ assert.ok(ev,'l’événement d’inscription est émis');
+ assert.ok(ev.text.includes('cloche'));
+ assert.equal(ev.note,'','pas de note sans fragments perdus');
+ s.drop={x:200,y:200,amount:12};s.events.length=0;
+ interact(s);
+ assert.ok(s.events.find(e=>e.type==='inscription').note.includes('fragments perdus'));
+});
+test('l’entrée du clocher est mise en scène, la victoire différée',()=>{
+ const s=createGame();const boss=s.enemies.find(e=>e.type==='boss');
+ s.player.x=17*TILE;s.player.y=20*TILE;
+ update(s,{},.02);
+ assert.equal(s.bossActive,true);assert.ok(s.introTimer>0);
+ assert.ok(s.events.some(e=>e.type==='bossIntro'));
+ assert.equal(startAction(s,'light'),false); // le pèlerin ne fait que se déplacer
+ const face=boss.state;
+ update(s,{},.02);assert.equal(boss.state,face); // le gardien attend la fin du bandeau
+ s.introTimer=0;
+ hurtEnemy(s,boss,999);
+ assert.equal(s.progress.bossDefeated,true);
+ assert.ok(s.victoryTimer>0,'la victoire est différée');
+ assert.ok(s.whiteFlash>0);assert.ok(s.slow>0);
+ assert.ok(s.events.some(e=>e.type==='bossDeath'));
+ assert.ok(!s.events.some(e=>e.type==='victory'),'pas d’écran de victoire immédiat');
+ advance(s,1.5);
+ assert.ok(s.events.some(e=>e.type==='victory'),'l’écran de victoire arrive après le ralenti');
 });
