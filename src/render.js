@@ -170,8 +170,6 @@ export class Renderer{
   }
   crow(c,cr,t,fly){
    c.save();
-   // Halo discret : sans lui, le lightmap de la zone éteint le plumage dans l'obscurité.
-   this.light(c,cr.x,cr.y-8,28,'#d2c09a20');
    if(fly<=0){
     c.translate(Math.round(cr.x),Math.round(cr.y+Math.sin(t*1.7+cr.x*.13)*1.2));
     ellipse(c,0,3,7,2.5,'#061217aa');
