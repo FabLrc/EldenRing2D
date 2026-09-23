@@ -228,7 +228,7 @@ export class Renderer{
  draw(s,dt,title=false,reduced=false){
   const c=this.c,w=this.canvas.width,h=this.canvas.height,t=s.time;
   this.lamps.length=0;
-  this.zoom=title?1.05:1.3;
+  this.zoom=(title?1.05:1.3)*(1+(reduced?0:clamp(s.punch||0,0,1.6)*.045));
   const target=title?{x:SHRINE.x-90,y:SHRINE.y-38}:{x:s.player.x,y:s.player.y-24};
   if(!title&&s.bossActive){const boss=s.enemies.find(e=>e.type==='boss');target.x+=clamp((boss.x-s.player.x)*.32,-100,100);target.y+=clamp((boss.y-s.player.y)*.32,-90,90);}
   if(title){this.camera.x=target.x;this.camera.y=target.y;}
@@ -300,6 +300,7 @@ export class Renderer{
     for(let i=0;i<rays;i++){c.rotate(Math.PI*2/rays);c.beginPath();c.moveTo(5,0);c.lineTo(reach,0);c.stroke();}
     rect(c,-(f.heavy?5:3),-(f.heavy?5:3),f.heavy?10:6,f.heavy?10:6,'#fff8d3');c.restore();
    }else if(f.ring){c.strokeStyle=f.color;c.lineWidth=4;c.beginPath();c.arc(f.x,f.y,f.radius*(1-life),0,Math.PI*2);c.stroke();}
+   else if(f.popup){const ty=f.y-(1-life)*18;c.font='bold 13px Georgia';c.textAlign='center';c.fillStyle='#1a1510';c.fillText(String(f.text),f.x+1,ty+1);c.fillStyle=f.color;c.fillText(String(f.text),f.x,ty);c.textAlign='left';}
    else rect(c,f.x,f.y,f.size,f.size,f.color);
   }c.globalAlpha=1;
    // Particules d’ambiance par zone ; désactivées en mouvement réduit.
@@ -313,6 +314,14 @@ export class Renderer{
    }
    c.restore();
    const fog=c.createLinearGradient(0,0,0,h);fog.addColorStop(0,'#8ba49d0a');fog.addColorStop(.5,'#a5bca006');fog.addColorStop(1,'#03131d32');c.fillStyle=fog;c.fillRect(0,0,w,h);
+   // Direction des dégâts reçus, en espace écran : un chevron au bord vers la source.
+   if(s.hurtDirTimer>0&&!s.dead){
+    const a=s.hurtDir,R=Math.min(w,h)*.4;
+    c.save();c.translate(w/2+Math.cos(a)*R,h/2+Math.sin(a)*R);c.rotate(a);
+    c.globalAlpha=clamp(s.hurtDirTimer/.55,0,1)*.85;
+    c.strokeStyle='#e56a4e';c.lineWidth=3;c.lineCap='round';
+    c.beginPath();c.moveTo(7,-10);c.lineTo(-3,0);c.lineTo(7,10);c.stroke();c.restore();
+   }
    // Lightmap alignée sur la caméra, grade de zone interpolé, puis post-traitement WebGL.
    this.paintLights(s,t,w,h,reduced,sx,sy);
    const boss=s.enemies.find(e=>e.type==='boss');
@@ -325,8 +334,13 @@ export class Renderer{
    const white=reduced?0:clamp(s.hitStop*2.5,0,.28);
    const flashAmt=Math.max(red,white);
    const g=this.grade;
+   // Vie basse : vignette qui pulse ; mort : la couleur se retire.
+   const hpRatio=clamp(s.player.hp/s.player.maxHp,0,1);
+   const low=hpRatio<.3&&!s.dead?1-hpRatio/.3:0;
+   const vigPulse=reduced?low*.55:low*(.5+.5*Math.sin(t*6));
+   const deathFade=s.dead?clamp(1-s.deathTimer/1.5,0,1):0;
    this.fx.present(this.scene,this.lightCv,{
-    tint:g.tint,amt:g.amt,sat:g.sat,con:g.con,vig:g.vig,
+    tint:g.tint,amt:g.amt,sat:g.sat*(1-deathFade*.85),con:g.con,vig:g.vig+vigPulse*.2,
     grain:reduced?0:.045,bloom:reduced?.3:.55,
     flashCol:white>=red?[1,1,1]:[1,.4,.3],flashAmt,
     aber:reduced?0:.0008+flashAmt*.015,time:t,

@@ -89,3 +89,21 @@ test('la roulade interrompt la récupération d’une attaque, après le coup',(
  startAction(s,'heavy');advance(s,.2);
  assert.equal(startAction(s,'roll'),false); // trop tôt : avant le coup porté
 });
+test('une mort gèle le temps, le ralentit, et un critique affiche ses dégâts',()=>{
+ const s=createGame();const e=makeEnemy('penitent',400,400,99);s.enemies=[e];
+ hurtEnemy(s,e,65,false,true);
+ assert.equal(e.dead,true);
+ assert.ok(s.hitStop>=.07);assert.ok(s.slow>0);assert.ok(s.punch>0);
+ assert.ok(s.effects.some(f=>f.popup&&f.text===65));
+ const t0=s.time;update(s,{},.02);
+ assert.ok(s.time-t0<.02,'le temps visuel est ralenti pendant le gel');
+});
+test('la mort du pèlerin ralentit la chute et une blessure signale sa direction',()=>{
+ const s=createGame();const e=makeEnemy('penitent',s.player.x+40,s.player.y,99);s.enemies=[];
+ s.player.invulnerable=0;s.player.hp=5;
+ assert.equal(hurtPlayer(s,10,e),true);
+ assert.equal(s.dead,true);assert.ok(s.slow>0);assert.ok(s.hurtDirTimer>0);
+ assert.ok(Math.abs(s.hurtDir)<.01,'la source est à droite du pèlerin');
+ const t0=s.time;update(s,{},.02);
+ assert.ok(s.time-t0<.01,'la chute est ralentie');
+});
