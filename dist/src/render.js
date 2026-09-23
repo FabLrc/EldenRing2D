@@ -39,6 +39,10 @@ export class Renderer{
   this.camera={x:SHRINE.x,y:SHRINE.y};this.zoom=1.45;
   this.scene.width=this.lightCv.width=canvas.width;this.scene.height=this.lightCv.height=canvas.height;
   this.tiles=new Image();this.tiles.src=new URL('../assets/vendor/stealthix/tileset_dungeon.png',import.meta.url).href;
+  this.props=new Image();this.props.src=new URL('../assets/generated/environment-props.png',import.meta.url).href;
+  this.shrineFire=new Image();this.shrineFire.src=new URL('../assets/generated/shrine-fire.png',import.meta.url).href;
+  this.shrineAltar=new Image();this.shrineAltar.src=new URL('../assets/generated/shrine-altar.png',import.meta.url).href;
+  this.pixelSprites=new Map();
   this.hero=new HeroAnimator();
   this.terrain=document.createElement('canvas');this.terrain.width=COLS*TILE;this.terrain.height=ROWS*TILE;
   this.drawTerrain();this.tiles.onload=()=>this.drawTerrain();
@@ -91,6 +95,31 @@ export class Renderer{
    c.globalAlpha=1;
   }
  }
+ pixelDraw(c,image,key,sx,sy,sw,sh,x,y,w,h,pixelHeight,tone=false){
+  let sprite=this.pixelSprites.get(key);
+  if(!sprite){
+   sprite=document.createElement('canvas');sprite.height=pixelHeight;sprite.width=Math.max(1,Math.round(pixelHeight*sw/sh));
+   const sc=sprite.getContext('2d',{willReadFrequently:true});sc.imageSmoothingEnabled=false;
+   sc.drawImage(image,sx,sy,sw,sh,0,0,sprite.width,sprite.height);
+   const pixels=sc.getImageData(0,0,sprite.width,sprite.height),data=pixels.data;
+   for(let i=0;i<data.length;i+=4){
+    if(data[i+3]<105){data[i+3]=0;continue;}
+    if(tone){const l=(data[i]*.25+data[i+1]*.6+data[i+2]*.15)*.88;data[i]=l+(data[i]-l)*.72;data[i+1]=l+(data[i+1]-l)*.72;data[i+2]=l+(data[i+2]-l)*.72;}
+    data[i]=Math.round(data[i]/20)*20;data[i+1]=Math.round(data[i+1]/20)*20;data[i+2]=Math.round(data[i+2]/20)*20;data[i+3]=255;
+   }
+   sc.putImageData(pixels,0,0);this.pixelSprites.set(key,sprite);
+  }
+  c.drawImage(sprite,x,y,w,h);
+ }
+ prop(c,name,x,y,height){
+  if(!this.props.complete||!this.props.naturalWidth)return;
+  const sprites={
+   deadTree:[24,28,390,505],pine:[438,28,310,505],tower:[780,0,410,570],pillar:[1228,70,300,500],
+   tomb:[82,575,250,420],candelabra:[462,552,245,450],candle:[802,690,326,305],rubble:[1148,690,380,315],
+  };
+  const [sx,sy,sw,sh]=sprites[name],width=height*sw/sh;
+  this.pixelDraw(c,this.props,`prop:${name}`,sx,sy,sw,sh,x-width/2,y-height,width,height,Math.max(22,Math.round(height*.65)),true);
+ }
  toWorld(clientX,clientY){const r=this.canvas.getBoundingClientRect();return {x:(clientX-r.left)*this.canvas.width/r.width/this.zoom+this.camera.x-this.canvas.width/this.zoom/2,y:(clientY-r.top)*this.canvas.height/r.height/this.zoom+this.camera.y-this.canvas.height/this.zoom/2};}
  light(c,x,y,r,color){
   // Halo peint sur la scène + source enregistrée pour la lightmap multiply.
@@ -125,34 +154,27 @@ export class Renderer{
   l.restore();l.globalCompositeOperation='source-over';
  }
  column(c,o,t){
-  const{x,y}=o;ellipse(c,x+10,y+4,24,10,'#07131880');
-  rect(c,x-19,y-5,38,10,'#27383b');rect(c,x-21,y-10,42,7,'#5b635c');rect(c,x-14,y-61,28,51,'#3d4c4a');rect(c,x-10,y-59,4,44,'#737866');rect(c,x+8,y-57,5,45,'#2c3c3c');
-  for(let j=0;j<4;j++)rect(c,x-14,y-50+j*12,28,1,'#172b2e');
-  rect(c,x-20,y-67,40,9,'#657061');rect(c,x-17,y-70,34,4,'#879078');
-  if(o.type==='statue'){
-   polygon(c,[[x-12,y-71],[x-9,y-98],[x,y-113],[x+10,y-98],[x+13,y-71]],'#555f57');
-   rect(c,x-4,y-99,8,9,'#222f30');rect(c,x-3,y-96,6,2,'#a99b66');rect(c,x-2,y-86,4,17,'#727760');
-  }
-  // Mousse suspendue.
-  for(let i=0;i<4;i++)rect(c,x-18+i*8,y-62,3,5+hash(i,x)*10,'#667450');
+  const{x,y}=o;this.prop(c,'pillar',x,y,112);
+  if(o.type==='statue'){rect(c,x-2,y-88,4,3,'#c9b477');}
  }
- tomb(c,o){const{x,y}=o;ellipse(c,x+8,y+3,27,12,'#0b191c80');polygon(c,[[x-20,y-8],[x-15,y-39],[x+14,y-39],[x+23,y-8]],'#545d52');rect(c,x-17,y-8,39,11,'#2f4140');rect(c,x-15,y-38,29,3,'#8a8d71');rect(c,x-1,y-34,2,20,'#afaa7c');rect(c,x-6,y-28,12,2,'#afaa7c');}
+ tomb(c,o){const{x,y}=o;this.prop(c,'tomb',x,y,64);}
  tree(c,x,y,scale=1,golden=false){
-  c.save();c.translate(x,y);c.scale(scale,scale);
-  ellipse(c,17,5,67,17,'#06151b77');
-  polygon(c,[[-15,0],[-6,-54],[-13,-85],[-9,-128],[0,-96],[6,-61],[15,-25],[23,0],[6,-5],[0,-28],[-4,-4]],'#384239');
-  c.strokeStyle=golden?'#787351':'#4d5647';c.lineWidth=5;
-  for(let i=0;i<7;i++){const side=i%2?1:-1;c.beginPath();c.moveTo(0,-45-i*9);c.lineTo(side*(22+i*3),-70-i*9);c.lineTo(side*(44+i*3),-94-i*10);c.stroke();}
-  if(golden){for(let i=0;i<62;i++){const a=hash(i,2)*Math.PI*2,r=hash(i,7)*72;const px=Math.cos(a)*r,py=-130+Math.sin(a)*r*.55;rect(c,px,py,6+hash(i,9)*12,3+hash(i,11)*6,['#77714d','#b2a15a','#c6b36c','#6c744e'][i%4]);}}
-  else{for(let i=0;i<18;i++){const a=i*2.4;rect(c,Math.cos(a)*40,-95+Math.sin(a)*27,12,5,'#374f43');}}
-  c.restore();
+  this.prop(c,golden?'deadTree':Math.abs(x+y)%3===0?'pine':'deadTree',x,y,150*scale);
+ }
+ fire(c,x,y,t){
+  if(!this.shrineFire.complete||!this.shrineFire.naturalWidth)return;
+  const frame=Math.floor(t*6)%10,cols=5,sw=this.shrineFire.naturalWidth/cols,sh=this.shrineFire.naturalHeight/2,h=52,w=h*sw/sh;
+  this.pixelDraw(c,this.shrineFire,`fire:${frame}`,(frame%cols)*sw,Math.floor(frame/cols)*sh,sw,sh,x-w/2,y-h,w,h,36,false);
+ }
+ altar(c,x,y){
+  if(!this.shrineAltar.complete||!this.shrineAltar.naturalWidth)return;
+  const h=94,w=h*this.shrineAltar.naturalWidth/this.shrineAltar.naturalHeight;
+  this.pixelDraw(c,this.shrineAltar,'altar',0,0,this.shrineAltar.naturalWidth,this.shrineAltar.naturalHeight,x-w/2,y-h,w,h,60,true);
  }
  shrine(c,t){
   const{x,y}=SHRINE;this.light(c,x,y-22,155,'#d9b86a24');this.light(c,x,y-30,55,'#e6bb6350');
-  ellipse(c,x,y+5,42,13,'#122525');
-  for(let i=0;i<3;i++){rect(c,x-35+i*6,y-4-i*7,70-i*12,8,'#4b5750');rect(c,x-35+i*6,y-4-i*7,70-i*12,2,'#989574');}
-  rect(c,x-2,y-58,4,41,'#b8b391');rect(c,x-11,y-52,22,3,'#dbc28a');rect(c,x-4,y-64,8,8,'#626b5a');
-  for(let i=0;i<7;i++){const wob=Math.sin(t*5+i)*3;polygon(c,[[x-10+i*3,y-20],[x-11+i*3+wob,y-42-hash(i,4)*14],[x-5+i*3,y-20]],i%2?'#f4d48c':'#cc934f');}
+  this.altar(c,x,y+4);
+  this.fire(c,x,y-37,t);
   for(let i=0;i<14;i++){const yy=(t*18+i*8)%110;rect(c,x+Math.sin(i*1.8+yy*.03)*25,y-18-yy,1+(i%2),2,i%2?'#d6bb75':'#ffdc9b');}
  }
  knight(c,p,t,type='player'){
@@ -220,7 +242,7 @@ export class Renderer{
   c.drawImage(this.terrain,0,0);
   // Bougies de guidage le long du chemin principal.
   for(const [tx,ty] of [[23,47],[29,47],[48,46],[53,45],[59,26],[52,25],[31,20],[18,30],[69,22]]){
-   const x=tx*TILE,y=ty*TILE;this.light(c,x,y-10,65,'#d2a76212');rect(c,x-3,y-12,6,16,'#666b55');rect(c,x-1,y-16,3,7,'#e0bd7f');if(!reduced)rect(c,x-1+Math.sin(t*8+x),y-18,2,4,'#fff0b0');
+   const x=tx*TILE,y=ty*TILE;this.light(c,x,y-10,65,'#d2a76212');this.prop(c,'candle',x,y,25);
   }
   // Les attaques sont affichées au sol, sous les acteurs.
   for(const e of s.enemies)if(!e.dead)this.telegraph(c,e,t);
@@ -233,13 +255,12 @@ export class Renderer{
   const drawables=WORLD.obstacles.map(o=>({y:o.y,draw:()=>{if(o.type==='tomb')this.tomb(c,o);else this.column(c,o,t);}}));
   const trees=[[7,43,1.2,false],[23,43,1.3,true],[22,56,1.1,false],[7,56,.8,false],[30,53,.7,false],[46,40,.8,false],[68,13,.9,false],[79,22,1.1,false],[10,36,1,false],[23,32,1,false],[30,9,.9,false],[4,24,1.2,false],[71,9,1,false]];
   for(const [x,y,k,g]of trees)drawables.push({y:y*TILE,draw:()=>{c.globalAlpha=s.player.y<y*TILE&&Math.abs(s.player.x-x*TILE)<65&&y*TILE-s.player.y<150?.35:1;this.tree(c,x*TILE,y*TILE,k,g);c.globalAlpha=1;}});
+  for(const [x,y,h] of [[13,51,54],[27,39,50],[69,18,48],[47,13,58]])drawables.push({y:y*TILE,draw:()=>this.prop(c,'rubble',x*TILE,y*TILE,h)});
+  for(const [x,y,h] of [[11,40,58],[67,25,52],[49,16,56]])drawables.push({y:y*TILE,draw:()=>{this.light(c,x*TILE,y*TILE-20,46,'#d2a76212');this.prop(c,'candelabra',x*TILE,y*TILE,h);}});
   drawables.push({y:SHRINE.y,draw:()=>this.shrine(c,t)});
   // Clocher : façade visible à l’extrémité nord de l’arène.
   drawables.push({y:7*TILE,draw:()=>{
-   const x=17*TILE,y=7*TILE;rect(c,x-75,y-112,150,99,'#344346');rect(c,x-80,y-120,160,12,'#636e62');
-   for(let i=0;i<3;i++){const xx=x-53+i*52;polygon(c,[[xx-17,y-20],[xx-17,y-77],[xx,y-95],[xx+17,y-77],[xx+17,y-20]],'#122329');rect(c,xx-19,y-76,3,57,'#87907b');rect(c,xx+17,y-76,3,57,'#53635b');}
-   rect(c,x-2,y-82,4,21,'#8c8864');polygon(c,[[x-12,y-41],[x-9,y-62],[x,y-69],[x+9,y-62],[x+12,y-41]],'#9d8c5a');rect(c,x-15,y-41,30,4,'#c2ab6c');
-   for(let i=0;i<4;i++)rect(c,x-91-i*5,y-14+i*6,182+i*10,5,['#586355','#404f49'][i%2]);
+   const x=17*TILE,y=7*TILE;this.prop(c,'tower',x,y+8,264);
   }});
   for(const e of s.enemies){
    if(e.dead){ellipse(c,e.x,e.y,15,5,'#171f20');continue;}

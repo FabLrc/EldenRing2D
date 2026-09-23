@@ -20,6 +20,11 @@ générées pour cette démo. Les vingt planches des dix animations sont
 intégrées depuis `assets/generated/pilgrim/`. Les pictogrammes couleur de
 l’interface sont des créations originales générées pour cette démo et
 réunies dans `assets/icons/`.
-Architecture, dalles, arbres, refuge, particules et cloche synthétique
-sont créés pour le prototype. Aucun asset Elden Ring ni génération
-PixelLab n’est utilisé.
+Les accessoires d’environnement (arbres, clocher, colonnes, stèles,
+bougies et gravats) sont des créations originales générées pour cette
+démo et réunies dans `assets/generated/environment-props.png`.
+La flamme animée en dix images et l’autel du sanctuaire sont des créations
+originales générées pour cette démo, réunies dans
+`assets/generated/shrine-fire.png` et `assets/generated/shrine-altar.png`.
+Architecture, dalles, refuge, particules et cloche synthétique sont créés
+pour le prototype. Aucun asset Elden Ring ni génération PixelLab n’est utilisé.
