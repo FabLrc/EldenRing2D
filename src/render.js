@@ -46,7 +46,8 @@ export class Renderer{
   this.shrineAltar=new Image();this.shrineAltar.src=new URL('../assets/generated/shrine-altar.png',import.meta.url).href;
    this.pixelSprites=new Map();
    this.hero=new HeroAnimator();
-   this.crows=[{x:23*TILE,y:42*TILE},{x:7*TILE,y:55*TILE},{x:46*TILE,y:39*TILE},{x:68*TILE,y:12*TILE},{x:10*TILE,y:35*TILE},{x:23*TILE,y:31*TILE}].map(c=>({...c,fly:0}));
+   // Corbeaux : posés sur du sol libre, près des arbres morts. Ils s'envolent à l'approche puis reviennent.
+   this.crows=[{x:25*TILE,y:42*TILE},{x:22*TILE,y:44*TILE},{x:47*TILE,y:40*TILE},{x:58*TILE,y:36*TILE},{x:45*TILE,y:17*TILE},{x:69*TILE,y:13*TILE}].map(c=>({...c,fly:0}));
   this.terrain=document.createElement('canvas');this.terrain.width=COLS*TILE;this.terrain.height=ROWS*TILE;
   this.drawTerrain();this.tiles.onload=()=>this.drawTerrain();
  }
@@ -169,15 +170,29 @@ export class Renderer{
   }
   crow(c,cr,t,fly){
    c.save();
+   // Halo discret : sans lui, le lightmap de la zone éteint le plumage dans l'obscurité.
+   this.light(c,cr.x,cr.y-8,28,'#d2c09a20');
    if(fly<=0){
-    c.translate(Math.round(cr.x),Math.round(cr.y));
-    ellipse(c,0,0,5,3,'#151d20');rect(c,2,-6,3,5,'#151d20');rect(c,5,-6,3,2,'#2a3336');
-    if(Math.sin(t*2+cr.x)>.92)rect(c,3,-5,1,1,'#c9b477');
+    c.translate(Math.round(cr.x),Math.round(cr.y+Math.sin(t*1.7+cr.x*.13)*1.2));
+    ellipse(c,0,3,7,2.5,'#061217aa');
+    const flick=Math.sin(t*1.3+cr.x*.17)>.72?1:0;
+    rect(c,-10,flick,8,3,'#4d575e');
+    rect(c,-3,-4,9,8,'#5c6870');
+    rect(c,-3,-4,8,2,'#7d8890');
+    rect(c,-2,-2,6,3,'#4d575e');
+    rect(c,5,-8,5,6,'#5c6870');
+    rect(c,5,-8,5,1,'#7d8890');
+    rect(c,10,-6,3,2,'#c9a45c');
+    if(Math.sin(t*2.2+cr.x*.11)>.9)rect(c,6,-7,1,1,'#f0e2b0');
    }else{
     c.globalAlpha=clamp(1-(fly-2.2)/1.4,0,1);
     c.translate(Math.round(cr.x+Math.sin(cr.x*1.3)*fly*34),Math.round(cr.y-fly*fly*52));
-    const flap=Math.sin(fly*20)*4;
-    polygon(c,[[0,0],[-10,-2+flap],[-4,1],[10,-2+flap],[4,1]],'#151d20');
+    const up=Math.sin(fly*20)>0;
+    rect(c,-12,up?-7:-2,10,3,'#4d575e');
+    rect(c,2,up?-7:-2,10,3,'#4d575e');
+    rect(c,-4,-3,9,7,'#5c6870');
+    rect(c,-4,-3,8,2,'#7d8890');
+    rect(c,-11,-1,5,2,'#4d575e');
    }
    c.restore();c.globalAlpha=1;
   }
