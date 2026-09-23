@@ -69,7 +69,7 @@ test('la parade renverse un assaillant de front et la riposte est fatale',()=>{
  assert.equal(startAction(s,'light',{x:1}),true);advance(s,.4);
  assert.equal(e.dead,true);assert.equal(s.player.souls,14);assert.equal(s.kills,1);
 });
-test('la parade rate hors de la fenêtre, et ne couvre ni projectile ni charge',()=>{
+test('la parade rate hors de la fenêtre et ne couvre pas les attaques imparables',()=>{
  const s=createGame();s.player.x=37*TILE;s.player.y=50*TILE;
  const e=makeEnemy('penitent',s.player.x+40,s.player.y,99);e.face=Math.PI;s.enemies=[e];
  startAction(s,'parry');advance(s,.45);

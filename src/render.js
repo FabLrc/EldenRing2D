@@ -227,7 +227,7 @@ export class Renderer{
   if(roll){c.globalAlpha=.7;ellipse(c,-Math.cos(p.action.dir)*13,0,12,5,'#b6c3af22');c.translate(0,-6);c.rotate(p.action.dir+p.action.time*14);c.scale(1,.75);}
   c.scale(scale,scale);
   if(p.hitReact>0){const kick=p.hitReact/Math.max(.01,p.hitReactMax);c.translate(-Math.cos(p.kickAngle)*kick*3,-Math.sin(p.kickAngle)*kick*2);c.scale(1+kick*.13,1-kick*.08);}
-  const cloak=type==='player'?'#8b6646':type==='boss'?'#733f3b':type==='bell'?'#787151':'#4b5656';
+  const cloak=type==='player'?'#8b6646':type==='boss'?'#733f3b':'#4b5656';
   const armor=p.flash>0?'#e9d5aa':type==='player'?'#9baba0':type==='boss'?'#7d8477':'#7b8c83';
   const dark=p.flash>0?'#d0b887':'#354448';
   polygon(c,[[-9,-27],[-13,-2],[-4,1],[2,-3],[12,-1],[8,-29]],cloak);
@@ -249,8 +249,7 @@ export class Renderer{
   else if(p.state==='recover'&&p.recover*(p.phase===2?.77:1)-p.timer<.25)swordAngle=face-1.1+(p.recover*(p.phase===2?.77:1)-p.timer)*9;
   else swordAngle=front?1.0:-.7;
   c.save();c.translate(8,-18);c.rotate(swordAngle);
-  if(type==='bell'){rect(c,3,-3,8,9,'#bdac73');rect(c,1,5,13,2,'#d0be88');}
-  else{const length=type==='watcher'?39:boss?38:27;rect(c,0,-2,length,4,'#bcc6b7');rect(c,6,-2,length-6,1,'#e7e5c6');rect(c,0,-6,3,12,'#b4a06e');rect(c,-8,-1,9,3,'#726047');if(type==='watcher')rect(c,-12,0,length-3,2,'#78694c');}
+  const length=type==='watcher'?39:boss?38:27;rect(c,0,-2,length,4,'#bcc6b7');rect(c,6,-2,length-6,1,'#e7e5c6');rect(c,0,-6,3,12,'#b4a06e');rect(c,-8,-1,9,3,'#726047');if(type==='watcher')rect(c,-12,0,length-3,2,'#78694c');
   c.restore();
   if(boss&&p.phase===1){c.strokeStyle='#a3936c';c.lineWidth=2;for(let i=0;i<5;i++){c.strokeRect(-15-i*3,-14+i*4,4,5);c.strokeRect(13+i*3,-15+i*4,4,5);}}
   c.restore();
@@ -261,7 +260,7 @@ export class Renderer{
   c.beginPath();
   if(e.attackKind==='slam'){c.arc(0,0,145,0,Math.PI*2);}
   else if(e.attackKind==='charge'){c.rotate(e.face);c.rect(0,-23,170,46);}
-  else{const reach=e.type==='bell'?100:e.reach,spread=e.type==='watcher'?.4:1.15;c.moveTo(0,0);c.arc(0,0,reach,e.face-spread,e.face+spread);c.closePath();}
+  else{const spread=e.type==='watcher'?.4:1.15;c.moveTo(0,0);c.arc(0,0,e.reach,e.face-spread,e.face+spread);c.closePath();}
   c.fill();c.stroke();c.restore();
   this.light(c,e.x,e.y-35,22,'#f09c5940');
   rect(c,e.x-2,e.y-(e.type==='boss'?94:49),4,6,'#f4ce90');
@@ -343,7 +342,6 @@ export class Renderer{
   if(a?.kind==='parry'&&a.time>=PARRY_WINDOW[0]&&a.time<=PARRY_WINDOW[1]){
    c.save();c.translate(s.player.x,s.player.y-13);c.strokeStyle='#f2ead494';c.lineWidth=3;c.beginPath();c.arc(0,0,36,a.face-.95,a.face+.95);c.stroke();c.strokeStyle='#ffffff66';c.lineWidth=1;c.beginPath();c.arc(0,0,40,a.face-.7,a.face+.7);c.stroke();c.restore();
   }
-  for(const b of s.projectiles){this.light(c,b.x,b.y,25,'#dda65b44');ellipse(c,b.x,b.y,5,5,'#edbc70');rect(c,b.x-2,b.y-2,3,3,'#fff0ba');}
   for(const f of s.effects){
    const life=clamp(f.life/f.maxLife,0,1);c.globalAlpha=life;
     if(f.impact){

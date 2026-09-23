@@ -1,4 +1,4 @@
-const TYPES=['penitent','watcher','bell'];
+const TYPES=['penitent','watcher'];
 export const ENEMY_CLIPS={idle:0,chase:1,windup:2,attack:3,recover:4,hit:5,stun:5,death:6};
 const clamp01=value=>Math.max(0,Math.min(1,value));
 
@@ -20,7 +20,7 @@ export function enemyPose(e,t){
   return {clip:'windup',frame:Math.min(9,Math.floor(progress*10))};
  }
  if(e.state==='recover'){
-  const total=e.recover*(e.phase===2?.77:1),elapsed=total-e.timer,attackTime=e.type==='bell'?.42:.30;
+  const total=e.recover*(e.phase===2?.77:1),elapsed=total-e.timer,attackTime=.30;
   if(elapsed<attackTime)return {clip:'attack',frame:Math.min(9,Math.floor(clamp01(elapsed/attackTime)*10))};
   return {clip:'recover',frame:Math.min(9,Math.floor(clamp01((elapsed-attackTime)/Math.max(.1,total-attackTime))*10))};
  }

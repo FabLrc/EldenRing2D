@@ -37,15 +37,15 @@ export function sanitizeSave(raw){
  return {version:1,souls:int(raw.souls,99999),vigor:int(raw.vigor,3),healing:int(raw.healing,3),talisman:raw.talisman===true,shortcut:raw.shortcut===true,bossDefeated:raw.bossDefeated===true,drop,deaths:int(raw.deaths,99999),cycle:int(raw.cycle,3),collected:Array.isArray(raw.collected)?raw.collected.filter(x=>Number.isInteger(x)&&x>=0&&x<5):[]};
 }
 export function serialize(s){return {version:1,...s.progress,souls:s.player.souls,drop:s.drop};}
-const ENEMY_TYPES={penitent:{hp:65,speed:48,reach:58,damage:19,wind:.85,recover:1.15,reward:14},watcher:{hp:88,speed:42,reach:100,damage:23,wind:.95,recover:1.1,reward:20},bell:{hp:55,speed:25,reach:240,damage:17,wind:1.15,recover:1.7,reward:18},boss:{hp:650,speed:45,reach:100,damage:28,wind:1.0,recover:1.15,reward:180}};
+const ENEMY_TYPES={penitent:{hp:65,speed:48,reach:58,damage:19,wind:.85,recover:1.15,reward:14},watcher:{hp:88,speed:42,reach:100,damage:23,wind:.95,recover:1.1,reward:20},boss:{hp:650,speed:45,reach:100,damage:28,wind:1.0,recover:1.15,reward:180}};
 export function makeEnemy(type,x,y,id){const t=ENEMY_TYPES[type];return {...t,type,x,y,homeX:x,homeY:y,id,maxHp:t.hp,r:type==='boss'?23:12,face:Math.PI/2,state:'idle',timer:0,flash:0,hitReact:0,hitReactMax:0,kickX:0,kickY:0,kickAngle:0,phase:1,cycle:0,dead:false,attackKind:'sweep'};}
 export function spawnEnemies(cycle=0){
  // La veille durcit le monde : PV et dégâts ×1,4 par cycle, le reste inchangé.
  const m=Math.pow(1.4,cycle);
  return [
   ['penitent',35,49],['penitent',43,44],['watcher',44,51],
-  ['penitent',57,48],['watcher',62,37],['bell',65,32],
-  ['watcher',44,25],['penitent',38,20],['bell',48,17],
+  ['penitent',57,48],['watcher',62,37],
+  ['watcher',44,25],['penitent',38,20],
   ['penitent',73,20],['watcher',77,14],['boss',17,14]
   ].map(([t,x,y],i)=>{const e=makeEnemy(t,x*TILE,y*TILE,i);if(m>1){e.hp=e.maxHp=Math.round(e.hp*m);e.damage=Math.round(e.damage*m);}return e;});
 }
@@ -53,7 +53,7 @@ export function createGame(save){
  const v=sanitizeSave(save)||{souls:0,vigor:0,healing:0,talisman:false,shortcut:false,bossDefeated:false,drop:null,deaths:0,cycle:0,collected:[]};
  const progress={vigor:v.vigor,healing:v.healing,talisman:v.talisman,shortcut:v.shortcut,bossDefeated:v.bossDefeated,deaths:v.deaths,cycle:v.cycle,collected:v.collected};
  const p={x:SHRINE.x,y:SHRINE.y+62,r:10,face:-Math.PI/2,moveFace:-Math.PI/2,hp:100+v.vigor*20,maxHp:100+v.vigor*20,stamina:100,souls:v.souls,flasks:3+v.cycle,action:null,invulnerable:0,regenDelay:0,flash:0,hitReact:0,hitReactMax:.3,kickAngle:0,walk:0,moving:false,stepIdx:0};
- const s={player:p,progress,enemies:spawnEnemies(v.cycle),drop:v.drop,effects:[],projectiles:[],events:[],time:0,dead:false,deathTimer:0,bossActive:false,shake:0,hitStop:0,slow:0,punch:0,hurtDir:0,hurtDirTimer:0,introTimer:0,victoryTimer:0,whiteFlash:0,flare:0,area:'refuge',visits:new Set(['refuge']),kills:0};
+ const s={player:p,progress,enemies:spawnEnemies(v.cycle),drop:v.drop,effects:[],events:[],time:0,dead:false,deathTimer:0,bossActive:false,shake:0,hitStop:0,slow:0,punch:0,hurtDir:0,hurtDirTimer:0,introTimer:0,victoryTimer:0,whiteFlash:0,flare:0,area:'refuge',visits:new Set(['refuge']),kills:0};
  if(v.bossDefeated)s.enemies.find(e=>e.type==='boss').dead=true;
  return s;
 }
@@ -137,7 +137,7 @@ export function hurtEnemy(s,e,amount,heavy=false,crit=false){
   s.hitStop=Math.max(s.hitStop,.07);s.slow=Math.max(s.slow,.22);
   emit(s,'sound',{name:'handleCoins'});burst(s,e.x,e.y-10,'#d5b97b',18);
   if(e.type==='boss'){
-   s.bossActive=false;s.progress.bossDefeated=true;s.projectiles=[];
+   s.bossActive=false;s.progress.bossDefeated=true;
    s.slow=Math.max(s.slow,.8);s.whiteFlash=.35;punch(s,1.4);s.victoryTimer=1.3;
    emit(s,'bossDeath');
   }
@@ -185,7 +185,7 @@ export function interact(s){
 export function rest(s){
  const p=s.player;p.hp=p.maxHp;p.stamina=100;p.flasks=3+s.progress.cycle;p.action=null;p.buffer=null;p.hitReact=0;p.invulnerable=1;
  s.enemies=spawnEnemies(s.progress.cycle);if(s.progress.bossDefeated)s.enemies.find(e=>e.type==='boss').dead=true;
- s.projectiles=[];s.bossActive=false;s.hitStop=0;s.slow=0;s.punch=0;s.hurtDirTimer=0;s.whiteFlash=0;s.introTimer=0;s.victoryTimer=0;s.flare=1;emit(s,'save');
+ s.bossActive=false;s.hitStop=0;s.slow=0;s.punch=0;s.hurtDirTimer=0;s.whiteFlash=0;s.introTimer=0;s.victoryTimer=0;s.flare=1;emit(s,'save');
 }
 export function respawn(s){s.dead=false;s.player.x=SHRINE.x;s.player.y=SHRINE.y+62;s.area='refuge';rest(s);emit(s,'save');}
 // La veille : après une victoire, tout est conservé, le monde se relève durci.
@@ -202,9 +202,7 @@ export function upgrade(s,kind){
 }
 function attackEnemy(s,e){
  const p=s.player;const d=distance(e,p);const a=Math.atan2(p.y-e.y,p.x-e.x);
- if(e.type==='bell'){
-  s.projectiles.push({x:e.x,y:e.y-8,vx:Math.cos(e.face)*155,vy:Math.sin(e.face)*155,life:3,damage:e.damage,r:5});
- }else if(e.type==='boss'&&e.attackKind==='slam'){
+ if(e.type==='boss'&&e.attackKind==='slam'){
   if(d<145&&clearSight(s,e,p))hurtPlayer(s,e.damage+5,e,false);
   s.effects.push({x:e.x,y:e.y,ring:true,radius:145,life:.5,maxLife:.5,color:'#e6b573'});s.shake=6;punch(s,1);
  }else if(d<e.reach+12&&Math.abs(angleDiff(a,e.face))<(e.type==='watcher'?.48:1.15)&&clearSight(s,e,p)){
@@ -292,6 +290,4 @@ export function update(s,input,dt){
  if(room?.id==='boss'&&!s.progress.bossDefeated&&!s.bossActive&&p.x<FOG.x-30&&p.y<26*TILE){s.bossActive=true;s.introTimer=2.2;emit(s,'bossIntro');}
  // Une chute dans l’arène ne doit pas laisser les attaques en cours continuer.
  for(const e of s.enemies){if(s.dead)break;updateEnemy(s,e,dt);}
-  for(const b of s.projectiles){b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;if(blocked(s,b.x,b.y,b.r))b.life=0;if(distance(b,p)<p.r+b.r){hurtPlayer(s,b.damage,b,false);b.life=0;}}
- s.projectiles=s.projectiles.filter(b=>b.life>0);
 }
