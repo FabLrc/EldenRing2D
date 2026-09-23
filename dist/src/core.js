@@ -53,7 +53,7 @@ export function createGame(save){
  const v=sanitizeSave(save)||{souls:0,vigor:0,healing:0,talisman:false,shortcut:false,bossDefeated:false,drop:null,deaths:0,cycle:0,collected:[]};
  const progress={vigor:v.vigor,healing:v.healing,talisman:v.talisman,shortcut:v.shortcut,bossDefeated:v.bossDefeated,deaths:v.deaths,cycle:v.cycle,collected:v.collected};
  const p={x:SHRINE.x,y:SHRINE.y+62,r:10,face:-Math.PI/2,moveFace:-Math.PI/2,hp:100+v.vigor*20,maxHp:100+v.vigor*20,stamina:100,souls:v.souls,flasks:3+v.cycle,action:null,invulnerable:0,regenDelay:0,flash:0,hitReact:0,hitReactMax:.3,kickAngle:0,walk:0,moving:false,stepIdx:0};
- const s={player:p,progress,enemies:spawnEnemies(v.cycle),drop:v.drop,effects:[],projectiles:[],events:[],time:0,dead:false,deathTimer:0,bossActive:false,shake:0,hitStop:0,slow:0,punch:0,hurtDir:0,hurtDirTimer:0,area:'refuge',visits:new Set(['refuge']),kills:0};
+ const s={player:p,progress,enemies:spawnEnemies(v.cycle),drop:v.drop,effects:[],projectiles:[],events:[],time:0,dead:false,deathTimer:0,bossActive:false,shake:0,hitStop:0,slow:0,punch:0,hurtDir:0,hurtDirTimer:0,introTimer:0,victoryTimer:0,whiteFlash:0,flare:0,area:'refuge',visits:new Set(['refuge']),kills:0};
  if(v.bossDefeated)s.enemies.find(e=>e.type==='boss').dead=true;
  return s;
 }
@@ -76,7 +76,7 @@ function dust(s,x,y,n=5){for(let i=0;i<n;i++){const a=(i/n-.5)*2.4,speed=16+(i*1
 function punch(s,amount=1){s.punch=Math.max(s.punch||0,amount);}
 export const PARRY_WINDOW=[.06,.32];
 export function startAction(s,kind,input={}){
- const p=s.player;if(s.dead)return false;
+  const p=s.player;if(s.dead||s.introTimer>0||s.victoryTimer>0)return false;
  if(p.action){
   const a=p.action;
   // Une roulade peut interrompre la récupération d'une attaque, après le coup.
@@ -101,7 +101,8 @@ export function hurtPlayer(s,amount,source,parryable=true){
  const p=s.player;if(s.dead||p.invulnerable>0)return false;
  // Parade : au début du geste, un coup armé est renvoyé et l'assaillant renversé.
  if(parryable&&source&&!source.dead&&p.action?.kind==='parry'&&p.action.time>=PARRY_WINDOW[0]&&p.action.time<=PARRY_WINDOW[1]){
-  source.state='stun';source.timer=source.type==='boss'?1.3:1.7;source.parried=true;source.flash=.22;
+  source.state='stun';source.timer=source.type==='boss'?1.3:1.7;source.stunDuration=source.timer;source.parried=true;source.flash=.22;
+  source.hitAnimUntil=s.time+.22;source.hitAnimDuration=.22;
   p.action=null;p.stamina=clamp(p.stamina+10,0,100);
   s.hitStop=Math.max(s.hitStop,.11);s.shake=Math.max(s.shake,5);
   burst(s,source.x,source.y-14,'#ffe3a4',20);burst(s,p.x,p.y-10,'#d8c27e',8);
@@ -122,22 +123,44 @@ export function hurtEnemy(s,e,amount,heavy=false,crit=false){
  const hitAngle=Math.atan2(dy,dx);
  e.hp=Math.max(0,e.hp-amount);e.flash=heavy||crit?.26:.16;
  e.hitReact=(heavy||crit)?.18:.10;e.hitReactMax=e.hitReact;e.kickAngle=hitAngle;
+ e.hitAnimUntil=s.time+(heavy||crit?.34:.28);e.hitAnimDuration=heavy||crit?.34:.28;
  e.kickX=Math.cos(hitAngle)*(heavy||crit?360:190);e.kickY=Math.sin(hitAngle)*(heavy||crit?360:190);
  burst(s,e.x,e.y-12,heavy||crit?'#ffe0a0':'#f7ebc9',heavy||crit?22:13);
  s.effects.push({impact:true,heavy:heavy||crit,x:e.x,y:e.y-15,angle:hitAngle,life:(heavy||crit)?.22:.14,maxLife:(heavy||crit)?.22:.14,color:heavy||crit?'#fff3cf':'#fff8e2'});
  s.hitStop=Math.max(s.hitStop,crit?.1:heavy?.082:.038);s.shake=Math.max(s.shake,crit?5.4:heavy?4.8:2.25);
- if(crit){punch(s,1);s.effects.push({popup:true,x:e.x,y:e.y-34,text:Math.round(amount),life:.85,maxLife:.85,color:'#ffe3a4'});}
- if(heavy&&e.type!=='boss'&&e.state!=='stun'){e.state='stun';e.timer=.65;}
- if(e.hp<=0){e.dead=true;s.player.souls+=e.reward;s.kills++;
+ if(crit){punch(s,1);s.slow=Math.max(s.slow,.25);
+  s.effects.push({popup:true,x:e.x,y:e.y-34,text:Math.round(amount),life:.85,maxLife:.85,color:'#ffe3a4'});
+  s.effects.push({popup:true,x:e.x,y:e.y-18,text:'RIPOSTE',life:.95,maxLife:.95,color:'#d8c27e',small:true});}
+ if(heavy&&e.type!=='boss'&&e.state!=='stun'){e.state='stun';e.timer=.65;e.stunDuration=.65;}
+ if(e.hp<=0){e.dead=true;e.deathTime=s.time;s.player.souls+=e.reward;s.kills++;
   // Mise à mort : un gel court puis un ralenti de suivi.
-  s.hitStop=Math.max(s.hitStop,.07);s.slow=.22;
-  if(e.type==='boss')punch(s,1.4);
+  s.hitStop=Math.max(s.hitStop,.07);s.slow=Math.max(s.slow,.22);
   emit(s,'sound',{name:'handleCoins'});burst(s,e.x,e.y-10,'#d5b97b',18);
-  if(e.type==='boss'){s.bossActive=false;s.progress.bossDefeated=true;s.projectiles=[];emit(s,'victory');}
+  if(e.type==='boss'){
+   s.bossActive=false;s.progress.bossDefeated=true;s.projectiles=[];
+   s.slow=Math.max(s.slow,.8);s.whiteFlash=.35;punch(s,1.4);s.victoryTimer=1.3;
+   emit(s,'bossDeath');
+  }
   emit(s,'save');
  }
 }
 export const LOOT=[{x:39*TILE,y:52*TILE,amount:18},{x:55*TILE,y:32*TILE,amount:22},{x:48*TILE,y:15*TILE,amount:25},{x:73*TILE,y:12*TILE,amount:30},{x:9*TILE,y:40*TILE,amount:12}];
+export const SUBTITLES={
+ refuge:'la flamme se souvient de vos pas',
+ cour:'les pénitents attendent, patiemment',
+ cloitre:'les pierres se souviennent des pas',
+ galerie:'ce qui est juré ne se répète jamais',
+ boss:'le bronze s’est tu depuis des siècles',
+ crypte:'le jardin pousse pour les oubliés',
+};
+export const INSCRIPTIONS=[
+ {x:9*TILE,y:43*TILE,text:'Sous la pierre, un visage sans nom. Il attendait la cloche. Il attend encore.'},
+ {x:38*TILE,y:47*TILE,text:'Un pénitent dort ici. Sa faute n’est pas gravée — elle ne l’a jamais quitté.'},
+ {x:56*TILE,y:33*TILE,text:'Les pierres se souviennent de tous les pas. Les vôtres, bientôt, parmi les autres.'},
+ {x:45*TILE,y:19*TILE,text:'Que celui qui jure revienne muet. La galerie garde les secrets — elle les garde tous.'},
+ {x:17*TILE,y:13*TILE,text:'Le bronze s’est tu le jour où le gardien a pris sa place. Plus rien ne sonne. Plus rien ne passe.'},
+ {x:72*TILE,y:19*TILE,text:'Aux oubliés, sans fleurs ni noms. Le jardin pousse quand même.'},
+];
 export function nearby(s){
  const p=s.player;
  if(distance(p,SHRINE)<72)return {kind:'shrine',label:'Se reposer au refuge'};
@@ -145,6 +168,7 @@ export function nearby(s){
  if(s.drop&&distance(p,s.drop)<48)return {kind:'drop',label:'Récupérer '+s.drop.amount+' fragments'};
  if(!s.progress.talisman&&distance(p,TALISMAN)<52)return {kind:'talisman',label:'Recueillir le talisman du souffle'};
  for(let i=0;i<LOOT.length;i++)if(!s.progress.collected.includes(i)&&distance(p,LOOT[i])<40)return {kind:'loot',id:i,label:'Recueillir des fragments'};
+ for(let i=0;i<INSCRIPTIONS.length;i++)if(distance(p,INSCRIPTIONS[i])<44)return {kind:'inscription',id:i,label:'Lire l’inscription'};
  return null;
 }
 export function interact(s){
@@ -153,14 +177,15 @@ export function interact(s){
  if(item.kind==='shrine'){rest(s);emit(s,'shrine');}
  if(item.kind==='locked')emit(s,'toast',{text:'Rejoignez le clocher pour ouvrir cette grille.'});
  if(item.kind==='gate'){s.progress.shortcut=true;emit(s,'toast',{text:'Raccourci ouvert — le refuge est tout proche.'});emit(s,'sound',{name:'doorOpen_1'});emit(s,'save');}
- if(item.kind==='drop'){s.player.souls+=s.drop.amount;s.drop=null;emit(s,'toast',{text:'Vos fragments vous sont rendus.'});emit(s,'sound',{name:'handleCoins'});emit(s,'save');}
+ if(item.kind==='drop'){s.player.souls+=s.drop.amount;s.drop=null;emit(s,'toast',{text:'Ici reposaient vos fragments. Ils vous sont rendus.'});emit(s,'sound',{name:'handleCoins'});emit(s,'save');}
+ if(item.kind==='inscription')emit(s,'inscription',{text:INSCRIPTIONS[item.id].text,note:s.drop?'Vos fragments perdus dorment quelque part dans les cendres.':''});
  if(item.kind==='talisman'){s.progress.talisman=true;emit(s,'toast',{text:'Talisman du souffle — l’endurance revient plus vite.'});burst(s,TALISMAN.x,TALISMAN.y,'#b8daa0',28);emit(s,'sound',{name:'handleCoins'});emit(s,'save');}
  if(item.kind==='loot'){s.player.souls+=LOOT[item.id].amount;s.progress.collected.push(item.id);emit(s,'sound',{name:'handleCoins'});emit(s,'toast',{text:'+'+LOOT[item.id].amount+' fragments'});emit(s,'save');}
 }
 export function rest(s){
  const p=s.player;p.hp=p.maxHp;p.stamina=100;p.flasks=3+s.progress.cycle;p.action=null;p.buffer=null;p.hitReact=0;p.invulnerable=1;
  s.enemies=spawnEnemies(s.progress.cycle);if(s.progress.bossDefeated)s.enemies.find(e=>e.type==='boss').dead=true;
- s.projectiles=[];s.bossActive=false;s.hitStop=0;s.slow=0;s.punch=0;s.hurtDirTimer=0;emit(s,'save');
+ s.projectiles=[];s.bossActive=false;s.hitStop=0;s.slow=0;s.punch=0;s.hurtDirTimer=0;s.whiteFlash=0;s.introTimer=0;s.victoryTimer=0;s.flare=1;emit(s,'save');
 }
 export function respawn(s){s.dead=false;s.player.x=SHRINE.x;s.player.y=SHRINE.y+62;s.area='refuge';rest(s);emit(s,'save');}
 // La veille : après une victoire, tout est conservé, le monde se relève durci.
@@ -197,10 +222,15 @@ function updateEnemy(s,e,dt){
  }
  e.timer-=dt;
  const p=s.player;let d=distance(e,p),a=Math.atan2(p.y-e.y,p.x-e.x);
- if(e.type==='boss'){
-  if(!s.bossActive)return;
-   if(e.hp<=e.maxHp*.5&&e.phase===1){e.phase=2;e.state='stun';e.timer=1.5;e.speed=65;burst(s,e.x,e.y-30,'#e5ac61',40);punch(s,1.1);emit(s,'toast',{text:'Les chaînes se brisent. Le gardien se souvient.'});}
- }
+  if(e.type==='boss'){
+   if(!s.bossActive)return;
+   // L'entrée en arène est une mise en scène : le gardien attend la fin du bandeau.
+   if(s.introTimer>0)return;
+    if(e.hp<=e.maxHp*.5&&e.phase===1){e.phase=2;e.state='stun';e.timer=1.5;e.speed=65;
+     burst(s,e.x,e.y-30,'#e5ac61',40);burst(s,e.x-18,e.y-28,'#a5694a',14);burst(s,e.x+18,e.y-28,'#c9a45c',14);
+     s.slow=Math.max(s.slow,.5);s.whiteFlash=.22;punch(s,1.1);
+     emit(s,'bossPhase');emit(s,'toast',{text:'Les chaînes se brisent. Le gardien se souvient.'});}
+  }
  if(e.state==='stun'){if(e.timer<=0){e.state='idle';e.parried=false;}return;}
  if(e.state==='windup'){
   if(e.timer>.3)e.face+=angleDiff(a,e.face)*Math.min(1,dt*2);
@@ -232,6 +262,10 @@ export function update(s,input,dt){
  for(const f of s.effects){f.life-=vdt;if(!f.ring&&!f.impact&&!f.popup){f.x+=f.vx*vdt;f.y+=f.vy*vdt;f.vy+=50*vdt;}}
  s.effects=s.effects.filter(f=>f.life>0);
  if(s.hurtDirTimer>0)s.hurtDirTimer=Math.max(0,s.hurtDirTimer-wall);
+ if(s.introTimer>0)s.introTimer=Math.max(0,s.introTimer-wall);
+ if(s.whiteFlash>0)s.whiteFlash=Math.max(0,s.whiteFlash-wall*1.6);
+ if(s.flare>0)s.flare=Math.max(0,s.flare-wall*2);
+ if(s.victoryTimer>0){s.victoryTimer-=wall;if(s.victoryTimer<=0){s.victoryTimer=0;if(!s.dead)emit(s,'victory');}}
  if(s.hitStop>0){s.hitStop=Math.max(0,s.hitStop-wall);return;}
  if(s.dead){s.deathTimer-=wall;if(s.deathTimer<=0&&!s.deathShown){s.deathShown=true;emit(s,'death');}return;}
  s.deathShown=false;
@@ -255,7 +289,7 @@ export function update(s,input,dt){
    const step=Math.floor(p.walk/Math.PI);if(step!==p.stepIdx){p.stepIdx=step;dust(s,p.x,p.y+2,3);}}
  const room=ROOMS.find(r=>p.x>=r.x*TILE&&p.x<(r.x+r.w)*TILE&&p.y>=r.y*TILE&&p.y<(r.y+r.h)*TILE);
  if(room&&room.id!==s.area){s.area=room.id;s.visits.add(room.id);emit(s,'area',{room});}
- if(room?.id==='boss'&&!s.progress.bossDefeated&&!s.bossActive&&p.x<FOG.x-30&&p.y<26*TILE){s.bossActive=true;emit(s,'boss');}
+ if(room?.id==='boss'&&!s.progress.bossDefeated&&!s.bossActive&&p.x<FOG.x-30&&p.y<26*TILE){s.bossActive=true;s.introTimer=2.2;emit(s,'bossIntro');}
  // Une chute dans l’arène ne doit pas laisser les attaques en cours continuer.
  for(const e of s.enemies){if(s.dead)break;updateEnemy(s,e,dt);}
   for(const b of s.projectiles){b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;if(blocked(s,b.x,b.y,b.r))b.life=0;if(distance(b,p)<p.r+b.r){hurtPlayer(s,b.damage,b,false);b.life=0;}}

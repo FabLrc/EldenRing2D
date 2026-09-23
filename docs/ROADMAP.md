@@ -13,7 +13,7 @@ PixelLab reste optionnel, uniquement après un essai du prototype.
 | 3. Exploration et mort | Implémenté : six zones, refuge, perte/récupération, raccourci et sauvegarde | Orientation et rythme en essai humain |
 | 4. Rencontres et progression | Implémenté : trois archétypes, butin, deux améliorations, talisman | Difficulté et économie à ajuster |
 | 5. Boss et parcours complet | Implémenté : trois attaques, deux phases et conclusion | Duel complet sans outils de diagnostic à tester humainement |
-| 6. Direction artistique | Lumières dynamiques (lightmap), shaders WebGL (bloom, grade de zone, grain, vignette, flash), particules d’ambiance par zone, traînée d’épée ; assets CC0 intégrés | Sprites animés définitifs, variété du décor, ambiance sonore, réglage fin des teintes en essai humain |
+| 6. Direction artistique | Lumières dynamiques, shaders WebGL, particules d’ambiance, traînée d’épée ; sprites animés du pèlerin et des trois archétypes ennemis ; accessoires pixel art | Animations du boss, variété du décor, ambiance sonore et réglage fin des teintes en essai humain |
 | 7. Livraison | Tests de simulation et navigateur, export statique | Playtests, compatibilité, performances sur matériel modeste, publication si demandée |
 | 8. Smartphone (tactile) | Implémenté : stick virtuel, grappe de boutons, auto-visée, paysage forcé, UI tactile — desktop inchangé | Validation manette et tactile sur appareil réel, confort des boutons, contraste en plein soleil |
 
@@ -23,7 +23,7 @@ PixelLab reste optionnel, uniquement après un essai du prototype.
 2. Parcourir le sanctuaire sans ouvrir la carte systématiquement.
 3. Tester le boss, notamment la lisibilité de la charge et de la frappe au sol.
 4. Relever la durée réelle, le nombre de morts et les difficultés de commandes.
-5. Choisir les sprites à remplacer en priorité ; budget PixelLab défini seulement après vérification des coûts du compte.
+5. Valider en jeu la lisibilité des animations et des sprites d’ennemis.
 
-Priorité d’assets éventuels : pèlerin et animations, boss et animations, puis silhouettes des trois ennemis.
+Prochaine priorité d’assets : le boss et ses animations, puis compléter la variété du décor.
 Les sols, murs, interface et petits effets peuvent rester locaux et réutilisables.

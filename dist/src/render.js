@@ -1,6 +1,7 @@
 import {WORLD,ROOMS,TILE,COLS,ROWS,SHRINE,TALISMAN,GATE,FOG,LOOT,clamp,PARRY_WINDOW} from './core.js';
 import {Fx} from './fx.js';
 import {HeroAnimator} from './hero.js';
+import {EnemyAnimator} from './enemy.js';
 const palette={floor:'#293737',line:'#17292c',light:'#445250',gold:'#d1b77d'};
 // Ambiance : teinte du grade par zone et obscurité ambiante de la lightmap.
 const GRADES={
@@ -22,9 +23,11 @@ const PARTICLES={
  cour:{n:42,dx:2.4,dy:1,c:['#bdcfc422','#d4c89048']},
  cloitre:{n:30,dx:1.2,dy:.5,c:['#a8c4d022','#c0d0d848']},
  galerie:{n:32,dx:1.5,dy:.6,c:['#b4c8c022','#d0c8a048']},
- boss:{n:52,dx:2.2,dy:7,up:1,c:['#e0a86040','#ffd89078']},
+ boss:{n:74,dx:2.2,dy:7,up:1,c:['#e0a86040','#ffd89078']},
  crypte:{n:44,dx:1.4,dy:.9,c:['#90d0a028','#bce8b858']},
 };
+const BOSS_ROOM=ROOMS.find(r=>r.id==='boss');
+const inBossRoom=o=>o.x>=BOSS_ROOM.x*TILE&&o.x<=(BOSS_ROOM.x+BOSS_ROOM.w)*TILE&&o.y>=BOSS_ROOM.y*TILE&&o.y<=(BOSS_ROOM.y+BOSS_ROOM.h)*TILE;
 const hash=(x,y)=>{let h=Math.imul(x+183,374761393)+Math.imul(y+527,668265263);h=Math.imul(h^(h>>>13),1274126177);return ((h^(h>>>16))>>>0)/4294967295;};
 function rect(c,x,y,w,h,col){c.fillStyle=col;c.fillRect(Math.floor(x),Math.floor(y),Math.ceil(w),Math.ceil(h));}
 function ellipse(c,x,y,rx,ry,col){c.fillStyle=col;c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fill();}
@@ -42,8 +45,11 @@ export class Renderer{
   this.props=new Image();this.props.src=new URL('../assets/generated/environment-props.png',import.meta.url).href;
   this.shrineFire=new Image();this.shrineFire.src=new URL('../assets/generated/shrine-fire.png',import.meta.url).href;
   this.shrineAltar=new Image();this.shrineAltar.src=new URL('../assets/generated/shrine-altar.png',import.meta.url).href;
-  this.pixelSprites=new Map();
+   this.pixelSprites=new Map();
   this.hero=new HeroAnimator();
+  this.enemyAnimator=new EnemyAnimator();
+   // Corbeaux : posés sur du sol libre, près des arbres morts. Ils s'envolent à l'approche puis reviennent.
+   this.crows=[{x:25*TILE,y:42*TILE},{x:22*TILE,y:44*TILE},{x:47*TILE,y:40*TILE},{x:58*TILE,y:36*TILE},{x:45*TILE,y:17*TILE},{x:69*TILE,y:13*TILE}].map(c=>({...c,fly:0}));
   this.terrain=document.createElement('canvas');this.terrain.width=COLS*TILE;this.terrain.height=ROWS*TILE;
   this.drawTerrain();this.tiles.onload=()=>this.drawTerrain();
  }
@@ -153,10 +159,43 @@ export class Renderer{
   }
   l.restore();l.globalCompositeOperation='source-over';
  }
- column(c,o,t){
-  const{x,y}=o;this.prop(c,'pillar',x,y,112);
-  if(o.type==='statue'){rect(c,x-2,y-88,4,3,'#c9b477');}
- }
+  column(c,o,t){
+   const{x,y}=o;this.prop(c,'pillar',x,y,112);
+   if(o.type==='statue'){rect(c,x-2,y-88,4,3,'#c9b477');}
+   else if(inBossRoom(o)){
+    // Chaînes du clocher : elles balancent, même quand le bronze s’est tu.
+    const sway=Math.sin(t*1.6+x*.07)*3;
+    c.save();c.translate(x+15,y-96);c.strokeStyle='#6d6250';c.lineWidth=2;
+    for(let i=0;i<8;i++){c.beginPath();c.ellipse(sway*(i/8),i*7,2.4,3.2,0,0,Math.PI*2);c.stroke();}
+    c.restore();
+   }
+  }
+  crow(c,cr,t,fly){
+   c.save();
+   if(fly<=0){
+    c.translate(Math.round(cr.x),Math.round(cr.y+Math.sin(t*1.7+cr.x*.13)*1.2));
+    ellipse(c,0,3,7,2.5,'#061217aa');
+    const flick=Math.sin(t*1.3+cr.x*.17)>.72?1:0;
+    rect(c,-10,flick,8,3,'#4d575e');
+    rect(c,-3,-4,9,8,'#5c6870');
+    rect(c,-3,-4,8,2,'#7d8890');
+    rect(c,-2,-2,6,3,'#4d575e');
+    rect(c,5,-8,5,6,'#5c6870');
+    rect(c,5,-8,5,1,'#7d8890');
+    rect(c,10,-6,3,2,'#c9a45c');
+    if(Math.sin(t*2.2+cr.x*.11)>.9)rect(c,6,-7,1,1,'#f0e2b0');
+   }else{
+    c.globalAlpha=clamp(1-(fly-2.2)/1.4,0,1);
+    c.translate(Math.round(cr.x+Math.sin(cr.x*1.3)*fly*34),Math.round(cr.y-fly*fly*52));
+    const up=Math.sin(fly*20)>0;
+    rect(c,-12,up?-7:-2,10,3,'#4d575e');
+    rect(c,2,up?-7:-2,10,3,'#4d575e');
+    rect(c,-4,-3,9,7,'#5c6870');
+    rect(c,-4,-3,8,2,'#7d8890');
+    rect(c,-11,-1,5,2,'#4d575e');
+   }
+   c.restore();c.globalAlpha=1;
+  }
  tomb(c,o){const{x,y}=o;this.prop(c,'tomb',x,y,64);}
  tree(c,x,y,scale=1,golden=false){
   this.prop(c,golden?'deadTree':Math.abs(x+y)%3===0?'pine':'deadTree',x,y,150*scale);
@@ -171,12 +210,12 @@ export class Renderer{
   const h=94,w=h*this.shrineAltar.naturalWidth/this.shrineAltar.naturalHeight;
   this.pixelDraw(c,this.shrineAltar,'altar',0,0,this.shrineAltar.naturalWidth,this.shrineAltar.naturalHeight,x-w/2,y-h,w,h,60,true);
  }
- shrine(c,t){
-  const{x,y}=SHRINE;this.light(c,x,y-22,155,'#d9b86a24');this.light(c,x,y-30,55,'#e6bb6350');
-  this.altar(c,x,y+4);
-  this.fire(c,x,y-37,t);
-  for(let i=0;i<14;i++){const yy=(t*18+i*8)%110;rect(c,x+Math.sin(i*1.8+yy*.03)*25,y-18-yy,1+(i%2),2,i%2?'#d6bb75':'#ffdc9b');}
- }
+  shrine(c,t,flare=0){
+   const{x,y}=SHRINE;this.light(c,x,y-22,155+flare*45,'#d9b86a24');this.light(c,x,y-30,55+flare*25,'#e6bb6350');
+   this.altar(c,x,y+4);
+   this.fire(c,x,y-37,t);
+   for(let i=0;i<14+flare*12;i++){const yy=(t*18+i*8)%110;rect(c,x+Math.sin(i*1.8+yy*.03)*25,y-18-yy,1+(i%2),2,i%2?'#d6bb75':'#ffdc9b');}
+  }
  knight(c,p,t,type='player'){
   const boss=type==='boss',scale=boss?1.9:1,roll=p.action?.kind==='roll';
   const moving=p.moving||p.state==='chase';const step=moving?Math.sin((p.walk||t*8))*3:0;
@@ -229,8 +268,9 @@ export class Renderer{
   const c=this.c,w=this.canvas.width,h=this.canvas.height,t=s.time;
   this.lamps.length=0;
   this.zoom=(title?1.05:1.3)*(1+(reduced?0:clamp(s.punch||0,0,1.6)*.045));
-  const target=title?{x:SHRINE.x-90,y:SHRINE.y-38}:{x:s.player.x,y:s.player.y-24};
-  if(!title&&s.bossActive){const boss=s.enemies.find(e=>e.type==='boss');target.x+=clamp((boss.x-s.player.x)*.32,-100,100);target.y+=clamp((boss.y-s.player.y)*.32,-90,90);}
+   const target=title?{x:SHRINE.x-90,y:SHRINE.y-38}:{x:s.player.x,y:s.player.y-24};
+   if(!title&&s.introTimer>0){const boss=s.enemies.find(e=>e.type==='boss');if(boss&&!boss.dead){target.x=boss.x;target.y=boss.y-30;}}
+   else if(!title&&s.bossActive){const boss=s.enemies.find(e=>e.type==='boss');target.x+=clamp((boss.x-s.player.x)*.32,-100,100);target.y+=clamp((boss.y-s.player.y)*.32,-90,90);}
   if(title){this.camera.x=target.x;this.camera.y=target.y;}
   else {this.camera.x+=(target.x-this.camera.x)*Math.min(1,dt*7);this.camera.y+=(target.y-this.camera.y)*Math.min(1,dt*7);}
   rect(c,0,0,w,h,'#132127');c.save();
@@ -256,16 +296,27 @@ export class Renderer{
   const trees=[[7,43,1.2,false],[23,43,1.3,true],[22,56,1.1,false],[7,56,.8,false],[30,53,.7,false],[46,40,.8,false],[68,13,.9,false],[79,22,1.1,false],[10,36,1,false],[23,32,1,false],[30,9,.9,false],[4,24,1.2,false],[71,9,1,false]];
   for(const [x,y,k,g]of trees)drawables.push({y:y*TILE,draw:()=>{c.globalAlpha=s.player.y<y*TILE&&Math.abs(s.player.x-x*TILE)<65&&y*TILE-s.player.y<150?.35:1;this.tree(c,x*TILE,y*TILE,k,g);c.globalAlpha=1;}});
   for(const [x,y,h] of [[13,51,54],[27,39,50],[69,18,48],[47,13,58]])drawables.push({y:y*TILE,draw:()=>this.prop(c,'rubble',x*TILE,y*TILE,h)});
-  for(const [x,y,h] of [[11,40,58],[67,25,52],[49,16,56]])drawables.push({y:y*TILE,draw:()=>{this.light(c,x*TILE,y*TILE-20,46,'#d2a76212');this.prop(c,'candelabra',x*TILE,y*TILE,h);}});
-  drawables.push({y:SHRINE.y,draw:()=>this.shrine(c,t)});
+   for(const [x,y,h] of [[11,40,58],[67,25,52],[49,16,56]])drawables.push({y:y*TILE,draw:()=>{this.light(c,x*TILE,y*TILE-20,46,'#d2a76212');this.prop(c,'candelabra',x*TILE,y*TILE,h);}});
+   for(const cr of this.crows){
+    const cd=Math.hypot(s.player.x-cr.x,s.player.y-cr.y);
+    if(cr.fly<=0){if(cd<95)cr.fly=.001;}
+    else{cr.fly=Math.min(cr.fly+dt,3.6);if(cr.fly>=3.6&&cd>240)cr.fly=0;}
+    if(cr.fly>=3.6)continue;
+    drawables.push({y:cr.y,draw:()=>this.crow(c,cr,t,cr.fly)});
+   }
+   drawables.push({y:SHRINE.y,draw:()=>this.shrine(c,t,s.flare||0)});
   // Clocher : façade visible à l’extrémité nord de l’arène.
   drawables.push({y:7*TILE,draw:()=>{
    const x=17*TILE,y=7*TILE;this.prop(c,'tower',x,y+8,264);
   }});
   for(const e of s.enemies){
-   if(e.dead){ellipse(c,e.x,e.y,15,5,'#171f20');continue;}
    if(Math.abs(e.x-this.camera.x)>w/this.zoom/2+90||Math.abs(e.y-this.camera.y)>h/this.zoom/2+120)continue;
-   drawables.push({y:e.y,draw:()=>{this.knight(c,e,t,e.type);if(e.hp<e.maxHp&&e.type!=='boss'){rect(c,e.x-15,e.y-53,30,3,'#15201c');rect(c,e.x-15,e.y-53,30*e.hp/e.maxHp,2,'#b0795a');}}});
+   if(e.dead&&e.deathTime===undefined)continue;
+   drawables.push({y:e.y,draw:()=>{
+    if(e.type==='boss'){if(e.dead)ellipse(c,e.x,e.y,25,8,'#171f20');else this.knight(c,e,t,e.type);return;}
+    if(!this.enemyAnimator.draw(c,e,t))this.knight(c,e,t,e.type);
+    if(!e.dead&&e.hp<e.maxHp){rect(c,e.x-15,e.y-61,30,3,'#15201c');rect(c,e.x-15,e.y-61,30*e.hp/e.maxHp,2,'#b0795a');}
+   }});
   }
   drawables.push({y:s.player.y,draw:()=>{if(!s.dead&&s.player.invulnerable>0&&s.player.action?.kind!=='roll')c.globalAlpha=.65+Math.sin(t*40)*.25;if(!this.hero.draw(c,s.player,t,s.dead,s.deathTimer)){if(s.dead)ellipse(c,s.player.x,s.player.y,18,7,'#6d5844');else this.knight(c,s.player,t);}c.globalAlpha=1;}});
   drawables.sort((a,b)=>a.y-b.y).forEach(d=>d.draw());
@@ -300,7 +351,7 @@ export class Renderer{
     for(let i=0;i<rays;i++){c.rotate(Math.PI*2/rays);c.beginPath();c.moveTo(5,0);c.lineTo(reach,0);c.stroke();}
     rect(c,-(f.heavy?5:3),-(f.heavy?5:3),f.heavy?10:6,f.heavy?10:6,'#fff8d3');c.restore();
    }else if(f.ring){c.strokeStyle=f.color;c.lineWidth=4;c.beginPath();c.arc(f.x,f.y,f.radius*(1-life),0,Math.PI*2);c.stroke();}
-   else if(f.popup){const ty=f.y-(1-life)*18;c.font='bold 13px Georgia';c.textAlign='center';c.fillStyle='#1a1510';c.fillText(String(f.text),f.x+1,ty+1);c.fillStyle=f.color;c.fillText(String(f.text),f.x,ty);c.textAlign='left';}
+   else if(f.popup){const ty=f.y-(1-life)*18,fs=f.small?10:13;c.font='bold '+fs+'px Georgia';c.textAlign='center';c.fillStyle='#1a1510';c.fillText(String(f.text),f.x+1,ty+1);c.fillStyle=f.color;c.fillText(String(f.text),f.x,ty);c.textAlign='left';}
    else rect(c,f.x,f.y,f.size,f.size,f.color);
   }c.globalAlpha=1;
    // Particules d’ambiance par zone ; désactivées en mouvement réduit.
@@ -331,7 +382,7 @@ export class Renderer{
    this.grade.tint=this.grade.tint.map((v,i)=>v+(gradeTarget.tint[i]-v)*k);
    for(const key of ['sat','con','vig','amt'])this.grade[key]+=(gradeTarget[key]-this.grade[key])*k;
    const red=reduced?0:clamp(s.player.flash*1.65,0,.33);
-   const white=reduced?0:clamp(s.hitStop*2.5,0,.28);
+   const white=reduced?0:Math.max(clamp(s.hitStop*2.5,0,.28),s.whiteFlash||0);
    const flashAmt=Math.max(red,white);
    const g=this.grade;
    // Vie basse : vignette qui pulse ; mort : la couleur se retire.

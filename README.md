@@ -99,6 +99,7 @@ Il teste les entrées clavier/souris, menus, sauvegarde, combat, mort, victoire,
 - `src/core.js` : simulation, monde, combats et progression ; indépendante du DOM.
 - `src/render.js` : terrain précalculé, lumières, particules de zone, caméra et carte.
 - `src/hero.js` : lecture des nouvelles planches de sprites du pèlerin et synchronisation avec les actions.
+- `src/enemy.js` : lecture des sept animations des trois archétypes ennemis.
 - `src/fx.js` : pipeline WebGL — lumière multiply, bloom, grade, grain, vignette, flash (repli Canvas 2D sans WebGL).
 - `src/main.js` : boucle, interface, commandes, audio et sauvegarde.
 - `assets/` : ressources livrées avec le jeu et licences.

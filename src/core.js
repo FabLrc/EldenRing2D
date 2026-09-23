@@ -101,7 +101,8 @@ export function hurtPlayer(s,amount,source,parryable=true){
  const p=s.player;if(s.dead||p.invulnerable>0)return false;
  // Parade : au début du geste, un coup armé est renvoyé et l'assaillant renversé.
  if(parryable&&source&&!source.dead&&p.action?.kind==='parry'&&p.action.time>=PARRY_WINDOW[0]&&p.action.time<=PARRY_WINDOW[1]){
-  source.state='stun';source.timer=source.type==='boss'?1.3:1.7;source.parried=true;source.flash=.22;
+  source.state='stun';source.timer=source.type==='boss'?1.3:1.7;source.stunDuration=source.timer;source.parried=true;source.flash=.22;
+  source.hitAnimUntil=s.time+.22;source.hitAnimDuration=.22;
   p.action=null;p.stamina=clamp(p.stamina+10,0,100);
   s.hitStop=Math.max(s.hitStop,.11);s.shake=Math.max(s.shake,5);
   burst(s,source.x,source.y-14,'#ffe3a4',20);burst(s,p.x,p.y-10,'#d8c27e',8);
@@ -122,6 +123,7 @@ export function hurtEnemy(s,e,amount,heavy=false,crit=false){
  const hitAngle=Math.atan2(dy,dx);
  e.hp=Math.max(0,e.hp-amount);e.flash=heavy||crit?.26:.16;
  e.hitReact=(heavy||crit)?.18:.10;e.hitReactMax=e.hitReact;e.kickAngle=hitAngle;
+ e.hitAnimUntil=s.time+(heavy||crit?.34:.28);e.hitAnimDuration=heavy||crit?.34:.28;
  e.kickX=Math.cos(hitAngle)*(heavy||crit?360:190);e.kickY=Math.sin(hitAngle)*(heavy||crit?360:190);
  burst(s,e.x,e.y-12,heavy||crit?'#ffe0a0':'#f7ebc9',heavy||crit?22:13);
  s.effects.push({impact:true,heavy:heavy||crit,x:e.x,y:e.y-15,angle:hitAngle,life:(heavy||crit)?.22:.14,maxLife:(heavy||crit)?.22:.14,color:heavy||crit?'#fff3cf':'#fff8e2'});
@@ -129,8 +131,8 @@ export function hurtEnemy(s,e,amount,heavy=false,crit=false){
  if(crit){punch(s,1);s.slow=Math.max(s.slow,.25);
   s.effects.push({popup:true,x:e.x,y:e.y-34,text:Math.round(amount),life:.85,maxLife:.85,color:'#ffe3a4'});
   s.effects.push({popup:true,x:e.x,y:e.y-18,text:'RIPOSTE',life:.95,maxLife:.95,color:'#d8c27e',small:true});}
- if(heavy&&e.type!=='boss'&&e.state!=='stun'){e.state='stun';e.timer=.65;}
- if(e.hp<=0){e.dead=true;s.player.souls+=e.reward;s.kills++;
+ if(heavy&&e.type!=='boss'&&e.state!=='stun'){e.state='stun';e.timer=.65;e.stunDuration=.65;}
+ if(e.hp<=0){e.dead=true;e.deathTime=s.time;s.player.souls+=e.reward;s.kills++;
   // Mise à mort : un gel court puis un ralenti de suivi.
   s.hitStop=Math.max(s.hitStop,.07);s.slow=Math.max(s.slow,.22);
   emit(s,'sound',{name:'handleCoins'});burst(s,e.x,e.y-10,'#d5b97b',18);

@@ -20,6 +20,9 @@ générées pour cette démo. Les vingt planches des dix animations sont
 intégrées depuis `assets/generated/pilgrim/`. Les pictogrammes couleur de
 l’interface sont des créations originales générées pour cette démo et
 réunies dans `assets/icons/`.
+Les planches animées des trois archétypes (pénitent, guetteur et sonneur)
+sont des créations originales en pixel art, intégrées dans
+`assets/generated/enemies/`.
 Les accessoires d’environnement (arbres, clocher, colonnes, stèles,
 bougies et gravats) sont des créations originales générées pour cette
 démo et réunies dans `assets/generated/environment-props.png`.
