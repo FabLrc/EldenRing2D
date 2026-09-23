@@ -15,8 +15,9 @@ Téléchargés le 22 septembre 2026. CC0 : https://creativecommons.org/publicdom
 
 ## Créations du prototype
 
-Les sprites du pèlerin sont des créations originales en pixel art HD-2D,
-générées pour cette démo et intégrées depuis `assets/generated/`.
+Les sprites du pèlerin sont des créations originales en pixel art,
+générées pour cette démo. Les vingt planches des dix animations sont
+intégrées depuis `assets/generated/pilgrim/`.
 Architecture, dalles, arbres, refuge, particules, interface et cloche
 synthétique sont créés pour le prototype. Aucun asset Elden Ring ni
 génération PixelLab n’est utilisé.

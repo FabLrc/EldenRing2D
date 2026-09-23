@@ -52,7 +52,7 @@ export function spawnEnemies(cycle=0){
 export function createGame(save){
  const v=sanitizeSave(save)||{souls:0,vigor:0,healing:0,talisman:false,shortcut:false,bossDefeated:false,drop:null,deaths:0,cycle:0,collected:[]};
  const progress={vigor:v.vigor,healing:v.healing,talisman:v.talisman,shortcut:v.shortcut,bossDefeated:v.bossDefeated,deaths:v.deaths,cycle:v.cycle,collected:v.collected};
- const p={x:SHRINE.x,y:SHRINE.y+62,r:10,face:-Math.PI/2,moveFace:-Math.PI/2,hp:100+v.vigor*20,maxHp:100+v.vigor*20,stamina:100,souls:v.souls,flasks:3+v.cycle,action:null,invulnerable:0,regenDelay:0,flash:0,walk:0,moving:false};
+ const p={x:SHRINE.x,y:SHRINE.y+62,r:10,face:-Math.PI/2,moveFace:-Math.PI/2,hp:100+v.vigor*20,maxHp:100+v.vigor*20,stamina:100,souls:v.souls,flasks:3+v.cycle,action:null,invulnerable:0,regenDelay:0,flash:0,hitReact:0,hitReactMax:.3,kickAngle:0,walk:0,moving:false};
  const s={player:p,progress,enemies:spawnEnemies(v.cycle),drop:v.drop,effects:[],projectiles:[],events:[],time:0,dead:false,deathTimer:0,bossActive:false,shake:0,hitStop:0,area:'refuge',visits:new Set(['refuge']),kills:0};
  if(v.bossDefeated)s.enemies.find(e=>e.type==='boss').dead=true;
  return s;
@@ -105,7 +105,7 @@ export function hurtPlayer(s,amount,source,parryable=true){
   emit(s,'sound',{name:'metalPot1'});
   return 'parry';
  }
- p.hp=Math.max(0,p.hp-amount);p.invulnerable=.7;p.flash=.2;p.action=null;p.buffer=null;s.shake=4;
+ p.hp=Math.max(0,p.hp-amount);p.invulnerable=.7;p.flash=.2;p.hitReact=p.hitReactMax=.3;p.kickAngle=source?Math.atan2(p.y-source.y,p.x-source.x):p.face+Math.PI;p.action=null;p.buffer=null;s.shake=4;
  burst(s,p.x,p.y-12,'#b46b50');emit(s,'sound',{name:'metalPot1'});
  if(source){const a=Math.atan2(p.y-source.y,p.x-source.x);move(s,p,Math.cos(a)*12,Math.sin(a)*12);}
  if(p.hp<=0){s.dead=true;s.deathTimer=1.5;s.progress.deaths++;s.drop=p.souls?{x:p.x,y:p.y,amount:p.souls}:null;p.souls=0;emit(s,'save');}
@@ -148,7 +148,7 @@ export function interact(s){
  if(item.kind==='loot'){s.player.souls+=LOOT[item.id].amount;s.progress.collected.push(item.id);emit(s,'sound',{name:'handleCoins'});emit(s,'toast',{text:'+'+LOOT[item.id].amount+' fragments'});emit(s,'save');}
 }
 export function rest(s){
- const p=s.player;p.hp=p.maxHp;p.stamina=100;p.flasks=3+s.progress.cycle;p.action=null;p.buffer=null;p.invulnerable=1;
+ const p=s.player;p.hp=p.maxHp;p.stamina=100;p.flasks=3+s.progress.cycle;p.action=null;p.buffer=null;p.hitReact=0;p.invulnerable=1;
  s.enemies=spawnEnemies(s.progress.cycle);if(s.progress.bossDefeated)s.enemies.find(e=>e.type==='boss').dead=true;
  s.projectiles=[];s.bossActive=false;emit(s,'save');
 }
@@ -221,7 +221,7 @@ export function update(s,input,dt){
  if(s.hitStop>0){s.hitStop=Math.max(0,s.hitStop-dt);return;}
  if(s.dead){s.deathTimer-=dt;if(s.deathTimer<=0&&!s.deathShown){s.deathShown=true;emit(s,'death');}return;}
  s.deathShown=false;
-  const p=s.player;p.invulnerable=Math.max(0,p.invulnerable-dt);p.flash=Math.max(0,p.flash-dt);p.regenDelay-=dt;
+  const p=s.player;p.invulnerable=Math.max(0,p.invulnerable-dt);p.flash=Math.max(0,p.flash-dt);p.hitReact=Math.max(0,p.hitReact-dt);p.regenDelay-=dt;
  let mx=input.x||0,my=input.y||0,len=Math.hypot(mx,my);if(len>1){mx/=len;my/=len;}
  if(!p.action&&Number.isFinite(input.angle))p.face=input.angle;
  if(!p.action&&p.regenDelay<=0)p.stamina=clamp(p.stamina+dt*(s.progress.talisman?39:28),0,100);
