@@ -20,9 +20,13 @@ générées pour cette démo. Les vingt planches des dix animations sont
 intégrées depuis `assets/generated/pilgrim/`. Les pictogrammes couleur de
 l’interface sont des créations originales générées pour cette démo et
 réunies dans `assets/icons/`.
-Les planches animées des trois archétypes (pénitent, guetteur et sonneur)
-sont des créations originales en pixel art, intégrées dans
+Les planches animées des ennemis ordinaires sont des créations originales en pixel art, intégrées dans
 `assets/generated/enemies/`.
+Le Gardien du Clocher et ses effets de combat sont des créations originales
+générées et assemblées pour cette démo. Les peintures sources sont dans
+`scripts/boss-sources/`, les planches prêtes pour le jeu dans
+`assets/generated/boss/` et le script de préparation dans
+`scripts/generate-boss-assets.py`.
 Les accessoires d’environnement (arbres, clocher, colonnes, stèles,
 bougies et gravats) sont des créations originales générées pour cette
 démo et réunies dans `assets/generated/environment-props.png`.

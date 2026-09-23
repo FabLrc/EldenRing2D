@@ -2,6 +2,7 @@ import {WORLD,ROOMS,TILE,COLS,ROWS,SHRINE,TALISMAN,GATE,FOG,LOOT,clamp,PARRY_WIN
 import {Fx} from './fx.js';
 import {HeroAnimator} from './hero.js';
 import {EnemyAnimator} from './enemy.js';
+import {BossAnimator} from './boss.js';
 const palette={floor:'#293737',line:'#17292c',light:'#445250',gold:'#d1b77d'};
 // Ambiance : teinte du grade par zone et obscurité ambiante de la lightmap.
 const GRADES={
@@ -48,6 +49,7 @@ export class Renderer{
    this.pixelSprites=new Map();
   this.hero=new HeroAnimator();
   this.enemyAnimator=new EnemyAnimator();
+  this.bossAnimator=new BossAnimator();
    // Corbeaux : posés sur du sol libre, près des arbres morts. Ils s'envolent à l'approche puis reviennent.
    this.crows=[{x:25*TILE,y:42*TILE},{x:22*TILE,y:44*TILE},{x:47*TILE,y:40*TILE},{x:58*TILE,y:36*TILE},{x:45*TILE,y:17*TILE},{x:69*TILE,y:13*TILE}].map(c=>({...c,fly:0}));
   this.terrain=document.createElement('canvas');this.terrain.width=COLS*TILE;this.terrain.height=ROWS*TILE;
@@ -313,13 +315,14 @@ export class Renderer{
    if(Math.abs(e.x-this.camera.x)>w/this.zoom/2+90||Math.abs(e.y-this.camera.y)>h/this.zoom/2+120)continue;
    if(e.dead&&e.deathTime===undefined)continue;
    drawables.push({y:e.y,draw:()=>{
-    if(e.type==='boss'){if(e.dead)ellipse(c,e.x,e.y,25,8,'#171f20');else this.knight(c,e,t,e.type);return;}
+    if(e.type==='boss'){if(!this.bossAnimator.draw(c,e,t)&&!e.dead)this.knight(c,e,t,e.type);return;}
     if(!this.enemyAnimator.draw(c,e,t))this.knight(c,e,t,e.type);
     if(!e.dead&&e.hp<e.maxHp){rect(c,e.x-15,e.y-61,30,3,'#15201c');rect(c,e.x-15,e.y-61,30*e.hp/e.maxHp,2,'#b0795a');}
    }});
   }
   drawables.push({y:s.player.y,draw:()=>{if(!s.dead&&s.player.invulnerable>0&&s.player.action?.kind!=='roll')c.globalAlpha=.65+Math.sin(t*40)*.25;if(!this.hero.draw(c,s.player,t,s.dead,s.deathTimer)){if(s.dead)ellipse(c,s.player.x,s.player.y,18,7,'#6d5844');else this.knight(c,s.player,t);}c.globalAlpha=1;}});
   drawables.sort((a,b)=>a.y-b.y).forEach(d=>d.draw());
+  for(const e of s.enemies)if(e.type==='boss')this.bossAnimator.drawAttackFx(c,e,t,reduced);
   // Grille du raccourci, toujours lisible.
   if(!s.progress.shortcut){rect(c,GATE.x,GATE.y-40,GATE.w,5,'#9b956f');rect(c,GATE.x,GATE.y-16,GATE.w,4,'#777b64');for(let x=GATE.x+5;x<GATE.x+GATE.w;x+=13){rect(c,x,GATE.y-44,3,65,'#888c73');rect(c,x+3,GATE.y-40,2,61,'#253b3c');}rect(c,GATE.x+GATE.w/2-5,GATE.y-10,10,10,'#baa367');}
   else{rect(c,GATE.x,GATE.y-38,5,56,'#8c8c70');rect(c,GATE.x+GATE.w-5,GATE.y-38,5,56,'#8c8c70');}
